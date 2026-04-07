@@ -2,10 +2,13 @@
   <div class="w-full relative" style="height: 100vh">
     <l-map
       v-if="ready"
-      :zoom="zoom"
-      :center="center"
+      :zoom="INIT_ZOOM"
+      :center="initCenter"
+      :min-zoom="16"
+      :max-zoom="18"
       :use-global-leaflet="false"
       style="width: 100%; height: 100%"
+      @ready="onMapReady"
     >
       <l-tile-layer
         :key="tileUrl"
@@ -14,66 +17,16 @@
         layer-type="base"
       />
 
+      <!-- User position: single vue-leaflet marker, no perf impact -->
       <l-marker
         v-if="props.userLat != null && props.userLng != null"
         :lat-lng="[props.userLat, props.userLng]"
-        :icon="
-          createCircularIcon({
-            color: 'var(--color-accent)',
-            isDark: theme === 'dark',
-            size: 26,
-            radius: 10,
-            strokeWidth: 3,
-            percent: 100,
-            innerCircleRadius: 5.5,
-          })
-        "
+        :icon="userMarkerIcon"
       >
         <l-tooltip
           :options="{ permanent: false, sticky: true, interactive: false }"
         >
           {{ t('bikeMap.me') }}
-        </l-tooltip>
-      </l-marker>
-
-      <l-marker
-        v-for="entity in bikes"
-        :key="
-          entity.kind === 'bike'
-            ? `${entity.provider}-${entity.bike_id}`
-            : `${entity.provider}-${entity.station_id}`
-        "
-        :lat-lng="[entity.lat, entity.lon]"
-        :icon="entity.kind === 'bike' ? bikeIcon(entity) : stationIcon(entity)"
-      >
-        <l-tooltip
-          :options="{ permanent: false, sticky: true, interactive: false }"
-        >
-          <div v-if="entity.kind === 'bike'" class="text-xs">
-            <strong class="uppercase">{{ entity.provider }}</strong>
-            <br />
-            {{ formatDistance(entity.distance) }}<br />
-            <template v-if="entity.battery_percent != null">
-              {{ entity.battery_percent }}%
-            </template>
-          </div>
-          <div v-else class="text-xs">
-            <strong class="uppercase">Vélib</strong>
-            <br />
-            <span>
-              {{ t('bikeMap.num_bikes_available', entity.num_bikes_available) }}
-            </span>
-            <br />
-            <span>
-              {{ t('bikeMap.mechanical', entity.mechanical) }}
-            </span>
-            <br />
-            <span>
-              {{ t('bikeMap.ebike', entity.ebike) }}
-            </span>
-            <br />
-            {{ formatDistance(entity.distance) }}
-          </div>
         </l-tooltip>
       </l-marker>
     </l-map>
@@ -108,7 +61,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, nextTick } from 'vue';
+import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import L from 'leaflet';
 import { LMap, LTileLayer, LMarker, LTooltip } from '@vue-leaflet/vue-leaflet';
@@ -130,6 +83,8 @@ const props = defineProps<{
 const { theme } = useTheme();
 const { t } = useI18n();
 
+// ── Tile config ─────────────────────────────────────────────────────
+
 const TILE_DARK =
   'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 const TILE_LIGHT =
@@ -143,7 +98,30 @@ const tileAttribution = computed(() =>
     : '&copy; OpenStreetMap &copy; CARTO',
 );
 
+// ── Map initialisation ───────────────────────────────────────────────
+
+const PARIS_LAT = 48.8566;
+const PARIS_LNG = 2.3522;
+const INIT_ZOOM = 16;
+const initCenter: [number, number] = [PARIS_LAT, PARIS_LNG];
+
 const ready = ref(false);
+
+// Plain (non-reactive) Leaflet references — never wrap Leaflet objects in Vue reactive
+let leafletMap: L.Map | null = null;
+let markersLayer: L.LayerGroup | null = null;
+let boundsTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Reactive bounds: plain serialisable data, safe to be reactive
+const mapBounds = ref<{ n: number; s: number; e: number; w: number } | null>(
+  null,
+);
+
+// Diff tracking — plain Map, not reactive
+const activeMarkers = new Map<
+  string,
+  { marker: L.Marker; entity: MapEntity }
+>();
 
 onMounted(() => {
   nextTick(() => {
@@ -151,13 +129,79 @@ onMounted(() => {
   });
 });
 
-const zoom = computed(() => (props.userLat != null ? 17 : 14));
-const PARIS_LAT = 48.8566;
-const PARIS_LNG = 2.3522;
-const center = computed<[number, number]>(() => [
-  props.userLat ?? PARIS_LAT,
-  props.userLng ?? PARIS_LNG,
-]);
+onUnmounted(() => {
+  if (boundsTimer) clearTimeout(boundsTimer);
+  activeMarkers.clear();
+  markersLayer?.clearLayers();
+});
+
+function refreshBounds(map: L.Map) {
+  const b = map.getBounds().pad(0.05);
+  mapBounds.value = {
+    n: b.getNorth(),
+    s: b.getSouth(),
+    e: b.getEast(),
+    w: b.getWest(),
+  };
+}
+
+function onMapReady(map: L.Map) {
+  leafletMap = map;
+  markersLayer = L.layerGroup().addTo(map);
+
+  refreshBounds(map);
+
+  map.on('zoomend', () => refreshBounds(map));
+
+  map.on('moveend', () => {
+    if (boundsTimer) clearTimeout(boundsTimer);
+    boundsTimer = setTimeout(() => {
+      refreshBounds(map);
+      boundsTimer = null;
+    }, 120);
+  });
+}
+
+// Fly to user position when it first becomes available
+watch(
+  () => props.userLat,
+  (lat, prevLat) => {
+    if (lat != null && prevLat == null && props.userLng != null && leafletMap) {
+      leafletMap.flyTo([lat, props.userLng], 16, { duration: 1.2 });
+    }
+  },
+);
+
+// ── Bounds-filtered entities ─────────────────────────────────────────
+
+function entityKey(e: MapEntity): string {
+  return e.kind === 'bike'
+    ? `b-${e.provider}-${e.bike_id}`
+    : `s-${e.station_id}`;
+}
+
+function entitiesEqual(a: MapEntity, b: MapEntity): boolean {
+  if (a.lat !== b.lat || a.lon !== b.lon) return false;
+  if (a.kind === 'bike' && b.kind === 'bike')
+    return a.battery_percent === b.battery_percent;
+  if (a.kind === 'station' && b.kind === 'station')
+    return (
+      a.num_bikes_available === b.num_bikes_available &&
+      a.ebike === b.ebike &&
+      a.mechanical === b.mechanical
+    );
+  return true;
+}
+
+const displayEntities = computed<MapEntity[]>(() => {
+  if (!mapBounds.value) return [];
+  const { n, s, e, w } = mapBounds.value;
+  return props.bikes.filter(
+    (b) => b.lat >= s && b.lat <= n && b.lon >= w && b.lon <= e,
+  );
+});
+
+// ── Icons ────────────────────────────────────────────────────────────
 
 const PROVIDER_HEX: Record<Provider, string> = {
   lime: 'var(--color-lime-brand)',
@@ -165,10 +209,6 @@ const PROVIDER_HEX: Record<Provider, string> = {
   dott: 'var(--color-dott-brand)',
   velib: 'var(--color-velib-brand)',
 };
-
-function markerColor(provider: Provider): string {
-  return PROVIDER_HEX[provider];
-}
 
 function createCircularIcon(options: {
   color: string;
@@ -180,6 +220,7 @@ function createCircularIcon(options: {
   text?: string;
   innerCircleRadius?: number;
   opacity?: number;
+  animate?: boolean;
 }): L.Icon {
   const {
     color,
@@ -191,6 +232,7 @@ function createCircularIcon(options: {
     text,
     innerCircleRadius,
     opacity = 1,
+    animate = false,
   } = options;
 
   const CX = size / 2;
@@ -216,11 +258,9 @@ function createCircularIcon(options: {
   }
 
   let centerElement = '';
-
   if (innerCircleRadius !== undefined) {
     centerElement += `<circle cx="${CX}" cy="${CX}" r="${innerCircleRadius}" fill="${color}"/>`;
   }
-
   if (text !== undefined) {
     const fontSize = text.length > 2 ? 10 : 12;
     const yOffset = CX + fontSize * 0.35;
@@ -237,55 +277,172 @@ function createCircularIcon(options: {
 
   return L.divIcon({
     html: svg,
-    className: '',
+    className: animate ? 'mk-in' : '',
     iconSize: [size, size],
     iconAnchor: [CX, CX],
   }) as unknown as L.Icon;
 }
 
-function bikeIcon(bike: Bike): L.Icon {
+function bikeIcon(bike: Bike, isDark: boolean, animate = false): L.Icon {
   return createCircularIcon({
-    color: markerColor(bike.provider),
-    isDark: theme.value === 'dark',
+    color: PROVIDER_HEX[bike.provider],
+    isDark,
     size: 26,
     radius: 10,
     strokeWidth: 3,
     percent: bike.battery_percent != null ? bike.battery_percent / 100 : null,
     innerCircleRadius: 5.5,
+    animate,
   });
 }
 
-function stationIcon(station: VelibStation): L.Icon {
+function stationIcon(
+  station: VelibStation,
+  isDark: boolean,
+  animate = false,
+): L.Icon {
   const count = station.num_bikes_available;
   const eBikes = station.ebike || 0;
   const mechBikes = station.mechanical || 0;
-  const totalCalculated = eBikes + mechBikes;
-
-  const percent = totalCalculated > 0 ? eBikes / totalCalculated : 0;
-
+  const total = eBikes + mechBikes;
+  const percent = total > 0 ? eBikes / total : 0;
   const opacity = station.is_renting === 0 || count === 0 ? 0.45 : 1;
 
   return createCircularIcon({
-    color: markerColor('velib'),
-    isDark: theme.value === 'dark',
+    color: PROVIDER_HEX.velib,
+    isDark,
     size: 34,
     radius: 14,
     strokeWidth: 3.5,
-    percent: percent,
+    percent,
     text: count.toString(),
     innerCircleRadius: 9.5,
-    opacity: opacity,
+    opacity,
+    animate,
   });
 }
+
+const userMarkerIcon = computed(() =>
+  createCircularIcon({
+    color: 'var(--color-accent)',
+    isDark: theme.value === 'dark',
+    size: 26,
+    radius: 10,
+    strokeWidth: 3,
+    percent: 100,
+    innerCircleRadius: 5.5,
+  }),
+);
+
+// ── Tooltip HTML ─────────────────────────────────────────────────────
 
 function formatDistance(m?: number) {
   if (m == null) return '-';
   if (m < 1000) return `${Math.round(m)}m`;
   return `${(m / 1000).toFixed(2)}km`;
 }
+
+function tooltipHtml(entity: MapEntity): string {
+  if (entity.kind === 'bike') {
+    const batt =
+      entity.battery_percent != null ? `<br>${entity.battery_percent}%` : '';
+    return `<strong class="uppercase">${entity.provider}</strong><br>${formatDistance(entity.distance)}${batt}`;
+  }
+  return [
+    '<strong>Vélib</strong>',
+    t('bikeMap.num_bikes_available', entity.num_bikes_available),
+    t('bikeMap.mechanical', entity.mechanical),
+    t('bikeMap.ebike', entity.ebike),
+    formatDistance(entity.distance),
+  ].join('<br>');
+}
+
+// ── Diff-based marker rendering ──────────────────────────────────────
+// Only adds/removes/updates markers that actually changed.
+// Stable markers never get destroyed → no flicker during pan/zoom.
+
+watch(displayEntities, (entities) => {
+  if (!markersLayer) return;
+  const isDark = theme.value === 'dark';
+
+  // Build the desired set
+  const nextMap = new Map<string, MapEntity>();
+  for (const e of entities) nextMap.set(entityKey(e), e);
+
+  // Remove markers that left the viewport
+  for (const [key, { marker }] of activeMarkers) {
+    if (!nextMap.has(key)) {
+      markersLayer.removeLayer(marker);
+      activeMarkers.delete(key);
+    }
+  }
+
+  // Add new / update changed markers
+  for (const [key, entity] of nextMap) {
+    const existing = activeMarkers.get(key);
+
+    if (!existing) {
+      // New marker in viewport — fade in via className animation
+      const icon =
+        entity.kind === 'bike'
+          ? bikeIcon(entity, isDark, true)
+          : stationIcon(entity, isDark, true);
+      const marker = L.marker([entity.lat, entity.lon], { icon }).bindTooltip(
+        tooltipHtml(entity),
+        { sticky: true, interactive: false },
+      );
+      markersLayer.addLayer(marker);
+      activeMarkers.set(key, { marker, entity });
+    } else if (!entitiesEqual(existing.entity, entity)) {
+      // Data changed — update in place without destroying the marker
+      if (
+        existing.entity.lat !== entity.lat ||
+        existing.entity.lon !== entity.lon
+      ) {
+        existing.marker.setLatLng([entity.lat, entity.lon]);
+      }
+      existing.marker.setIcon(
+        entity.kind === 'bike'
+          ? bikeIcon(entity, isDark)
+          : stationIcon(entity, isDark),
+      );
+      existing.marker.setTooltipContent(tooltipHtml(entity));
+      activeMarkers.set(key, { marker: existing.marker, entity });
+    }
+  }
+});
+
+// Theme change: re-render icons in place (no add/remove)
+watch(
+  () => theme.value,
+  () => {
+    const isDark = theme.value === 'dark';
+    for (const [, { marker, entity }] of activeMarkers) {
+      marker.setIcon(
+        entity.kind === 'bike'
+          ? bikeIcon(entity, isDark)
+          : stationIcon(entity, isDark),
+      );
+    }
+  },
+);
 </script>
 
 <style scoped>
+/* Marker enter animation on the Leaflet-managed container.
+   Opacity only — no transform to avoid conflicting with Leaflet positioning. */
+:deep(.leaflet-marker-icon.mk-in) {
+  animation: mkIn 0.18s ease-out forwards;
+}
+@keyframes mkIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Leaflet zoom controls */
 :deep(.leaflet-control-zoom) {
   border: 1px solid var(--leaflet-ctrl-border) !important;

@@ -29,35 +29,7 @@
 
     <!-- Geolocation widget (bottom-right) -->
     <div class="fixed bottom-6 right-4 z-1000">
-      <button
-        class="flex items-center gap-2 backdrop-blur-sm bg-accent-500/5 dark:bg-black/10 text-accent-600 dark:text-accent-400 text-xs font-medium px-3 py-2 rounded-xl border border-accent-200 dark:border-accent-700 shadow-sm hover:bg-accent-100/60 dark:hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        :disabled="geoLoading"
-        @click="locate"
-      >
-        <SpinnerIcon v-if="geoLoading" size="sm" />
-        <svg
-          v-else
-          xmlns="http://www.w3.org/2000/svg"
-          class="w-3.5 h-3.5 flex-none"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <circle cx="12" cy="12" r="3" />
-          <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
-        </svg>
-        {{ geoLoading ? t('main.locating') : t('main.locateMe') }}
-      </button>
-      <!-- Geo error tooltip -->
-      <div
-        v-if="geoError"
-        class="mt-1 text-red-400 text-xs bg-red-950/80 px-2 py-1 rounded-lg border border-red-800 max-w-xs text-right"
-      >
-        {{ geoError }}
-      </div>
+      <GeoWidget />
     </div>
 
     <!-- API error toast -->
@@ -92,10 +64,11 @@ import SpinnerIcon from '../components/SpinnerIcon.vue';
 import SettingsPanel from '../components/SettingsPanel.vue';
 import BaseButton from '../components/BaseButton.vue';
 import OnboardingModal from '../components/OnboardingModal.vue';
+import GeoWidget from '../components/GeoWidget.vue';
 
 const store = useProfileStore();
 const { t } = useI18n();
-const { error: geoError, loading: geoLoading, locate } = useGeolocation();
+const { locate } = useGeolocation();
 
 const showList = ref(false);
 const showSettings = ref(false);
@@ -111,6 +84,11 @@ function dismissOnboarding() {
 onMounted(() => {
   // Query params take priority (shared link / embed-like usage on main view)
   applyQueryParams(window.location.search);
+
+  // Auto re-locate if GPS was active in previous session
+  if (store.locationMode === 'geo') {
+    locate();
+  }
 
   // Show first-run modal if not previously dismissed
   if (!localStorage.getItem(ONBOARDING_KEY)) {

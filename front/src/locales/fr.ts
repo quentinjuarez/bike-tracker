@@ -29,11 +29,7 @@ export default {
     subtitle:
       'Tous les opérateurs parisiens sur une seule carte — Lime, Voi, Dott et Vélib en temps réel.',
     useGps: 'Utiliser ma position GPS',
-    locating: 'Localisation…',
     or: 'ou entrer manuellement',
-    placeholder: 'Coordonnées ou lien Google Maps…',
-    cannotParse: 'Impossible de lire la position',
-    confirmLocation: 'Confirmer la position',
     supportedFormats: 'Formats supportés',
   },
   bikeList: {
@@ -163,18 +159,15 @@ export default {
         "Du fait de l'absence de collecte de données personnelles, l'application ne traite aucune donnée vous concernant au sens du RGPD. Toutefois, pour toute question relative à la vie privée, vous pouvez contacter l'éditeur à l'adresse\u00a0: {email}",
     },
   },
-  settings: {
-    title: 'Paramètres',
-    location: 'Localisation',
-    noPosition: 'Aucune position définie',
-    locating: 'Localisation…',
-    refreshGps: 'Actualiser le GPS',
-    getGps: 'Utiliser le GPS',
+  geo: {
     enterManually: 'Saisir manuellement',
     cancel: 'Annuler',
     placeholder: 'Coordonnées ou lien Google Maps…',
     cannotParse: 'Impossible de lire la position',
-    confirmLocation: 'Confirmer la position',
+    confirm: 'Confirmer la position',
+  },
+  settings: {
+    title: 'Paramètres',
     providers: 'Opérateurs',
     filters: 'Filtres',
     maxDistance: 'Distance max',
@@ -188,5 +181,6 @@ export default {
     lightMode: 'Mode clair',
     darkMode: 'Mode sombre',
     language: 'Langue',
+    location: 'Localisation',
   },
 } as const;

@@ -28,11 +28,7 @@ export default {
     subtitle:
       'Every Paris bike operator on one map — Lime, Voi, Dott and Vélib in real time.',
     useGps: 'Use my GPS location',
-    locating: 'Locating…',
     or: 'or enter manually',
-    placeholder: 'Coordinates or Google Maps link…',
-    cannotParse: 'Could not parse location',
-    confirmLocation: 'Confirm location',
     supportedFormats: 'Supported formats',
   },
   bikeList: {
@@ -162,18 +158,15 @@ export default {
         'Because the application does not collect any personal data, no data about you is processed within the meaning of the GDPR. However, for any privacy-related question, you may contact the publisher at: {email}',
     },
   },
-  settings: {
-    title: 'Settings',
-    location: 'Location',
-    noPosition: 'No position set',
-    locating: 'Locating…',
-    refreshGps: 'Refresh GPS',
-    getGps: 'Get GPS location',
+  geo: {
     enterManually: 'Enter location manually',
     cancel: 'Cancel',
     placeholder: 'Coordinates or Google Maps link…',
     cannotParse: 'Could not parse location',
-    confirmLocation: 'Confirm location',
+    confirm: 'Confirm location',
+  },
+  settings: {
+    title: 'Settings',
     providers: 'Providers',
     filters: 'Filters',
     maxDistance: 'Max distance',
@@ -187,5 +180,6 @@ export default {
     lightMode: 'Switch to light mode',
     darkMode: 'Switch to dark mode',
     language: 'Language',
+    location: 'Location',
   },
 } as const;

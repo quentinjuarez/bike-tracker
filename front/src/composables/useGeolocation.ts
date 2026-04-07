@@ -1,14 +1,17 @@
 import { ref } from 'vue';
 import { useProfileStore } from '../stores/profile';
 
+// Module-level shared state so all callers (GeoWidget, SettingsPanel, MainView)
+// see the same loading/error without prop-drilling.
+const error = ref<string | null>(null);
+const loading = ref(false);
+
 /**
  * Geolocation helper. Call `locate()` to fetch GPS position.
  * On success, stores position with locationMode = 'geo'.
  */
 export function useGeolocation() {
   const store = useProfileStore();
-  const error = ref<string | null>(null);
-  const loading = ref(false);
 
   function locate() {
     if (!navigator.geolocation) {

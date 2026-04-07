@@ -26,88 +26,6 @@
             </div>
           </div>
 
-          <!-- ── Location ──────────────────────────────────────────── -->
-          <section class="space-y-3">
-            <h3
-              class="text-xs uppercase tracking-widest text-accent-500 font-medium"
-            >
-              {{ t('settings.location') }}
-            </h3>
-
-            <!-- Current coords -->
-            <div
-              v-if="store.hasPosition"
-              class="text-xs text-accent-500 font-mono"
-            >
-              {{ store.lat?.toFixed(5) }}, {{ store.lng?.toFixed(5) }}
-              <span class="ml-2 text-accent-300 dark:text-accent-700">
-                {{ store.locationMode === 'geo' ? '(GPS)' : '(manual)' }}
-              </span>
-            </div>
-            <div v-else class="text-xs text-accent-300 dark:text-accent-700">
-              {{ t('settings.noPosition') }}
-            </div>
-
-            <!-- GPS refresh button -->
-            <BaseButton
-              size="sm"
-              class="w-full"
-              :disabled="geoLoading"
-              @click="locate"
-            >
-              <SpinnerIcon v-if="geoLoading" size="sm" class="mr-1" />
-              {{
-                geoLoading
-                  ? t('settings.locating')
-                  : store.hasPosition
-                    ? t('settings.refreshGps')
-                    : t('settings.getGps')
-              }}
-            </BaseButton>
-            <div v-if="geoError" class="text-red-400 text-xs">
-              {{ geoError }}
-            </div>
-
-            <!-- Manual input (toggle) -->
-            <button
-              class="text-[11px] text-accent-400 dark:text-accent-500 hover:text-accent-600 dark:hover:text-accent-300 transition-colors uppercase tracking-widest underline-offset-2 hover:underline"
-              @click="showManualInput = !showManualInput"
-            >
-              {{
-                showManualInput
-                  ? t('settings.cancel')
-                  : t('settings.enterManually')
-              }}
-            </button>
-
-            <template v-if="showManualInput">
-              <BaseInput
-                v-model="locationRaw"
-                type="text"
-                :placeholder="t('settings.placeholder')"
-                class="w-full"
-                @keydown.enter="submitManual"
-              />
-              <div v-if="locationRaw && parsed" class="text-xs text-green-400">
-                ✓ {{ parsed.lat.toFixed(5) }}, {{ parsed.lng.toFixed(5) }}
-              </div>
-              <div
-                v-else-if="locationRaw && !parsed"
-                class="text-xs text-red-400"
-              >
-                {{ t('settings.cannotParse') }}
-              </div>
-              <BaseButton
-                size="sm"
-                class="w-full"
-                :disabled="!parsed"
-                @click="submitManual"
-              >
-                {{ t('settings.confirmLocation') }}
-              </BaseButton>
-            </template>
-          </section>
-
           <!-- ── Providers ─────────────────────────────────────────── -->
           <section class="space-y-2">
             <h3
@@ -190,6 +108,106 @@
             <LanguageSwitcher />
           </section>
 
+          <!-- ── Location ──────────────────────────────────────────── -->
+          <section class="space-y-3">
+            <h3
+              class="text-xs uppercase tracking-widest text-accent-500 font-medium"
+            >
+              {{ t('settings.location') }}
+            </h3>
+
+            <!-- Current position + GPS button row -->
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <div
+                v-if="store.hasPosition"
+                class="flex items-center gap-2 text-xs font-mono text-accent-500 dark:text-accent-400"
+              >
+                <span
+                  v-if="store.locationMode === 'geo' && !geoLoading"
+                  class="relative flex h-2 w-2 flex-none"
+                >
+                  <span
+                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"
+                  />
+                  <span
+                    class="relative inline-flex rounded-full h-2 w-2 bg-green-500"
+                  />
+                </span>
+                <SpinnerIcon v-else-if="geoLoading" size="sm" />
+                {{ store.lat?.toFixed(5) }}, {{ store.lng?.toFixed(5) }}
+                <span class="text-accent-300 dark:text-accent-600">
+                  {{ store.locationMode === 'geo' ? '(GPS)' : '(manual)' }}
+                </span>
+              </div>
+              <span v-else class="text-xs text-accent-400">—</span>
+
+              <button
+                class="flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-xl bg-accent-500/5 border border-accent-200 dark:border-accent-700 text-accent-600 dark:text-accent-400 hover:bg-accent-100/60 dark:hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="geoLoading"
+                @click="locate"
+              >
+                <SpinnerIcon v-if="geoLoading" size="sm" />
+                <svg
+                  v-else
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-3.5 h-3.5 flex-none"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+                </svg>
+                {{ geoLoading ? t('main.locating') : t('main.locateMe') }}
+              </button>
+            </div>
+
+            <!-- Geo error -->
+            <p v-if="geoError" class="text-xs text-red-400">{{ geoError }}</p>
+
+            <!-- Manual input toggle -->
+            <button
+              class="text-xs text-accent-400 dark:text-accent-500 hover:text-accent-600 dark:hover:text-accent-300 transition-colors"
+              @click="showManualInput = !showManualInput"
+            >
+              {{ showManualInput ? t('geo.cancel') : t('geo.enterManually') }}
+            </button>
+
+            <template v-if="showManualInput">
+              <BaseInput
+                v-model="locationRaw"
+                type="text"
+                :placeholder="t('geo.placeholder')"
+                class="text-xs"
+                @keydown.enter="submitManual"
+              />
+              <div
+                v-if="locationRaw && parsedLocation"
+                class="text-[11px] text-green-400"
+              >
+                ✓ {{ parsedLocation.lat.toFixed(5) }},
+                {{ parsedLocation.lng.toFixed(5) }}
+              </div>
+              <div
+                v-else-if="locationRaw && !parsedLocation"
+                class="text-[11px] text-red-400"
+              >
+                {{ t('geo.cannotParse') }}
+              </div>
+              <BaseButton
+                variant="ghost"
+                size="sm"
+                :disabled="!parsedLocation"
+                @click="submitManual"
+              >
+                {{ t('geo.confirm') }}
+              </BaseButton>
+            </template>
+          </section>
+
           <!-- Reset -->
           <BaseButton
             variant="danger-ghost"
@@ -242,17 +260,21 @@ const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{ close: [] }>();
 
 const store = useProfileStore();
-const { error: geoError, loading: geoLoading, locate } = useGeolocation();
 const { t } = useI18n();
+const { error: geoError, loading: geoLoading, locate } = useGeolocation();
 
 // ── Manual location input ────────────────────────────────────────────
 const showManualInput = ref(false);
 const locationRaw = ref('');
-const parsed = computed(() => parseLocation(locationRaw.value));
+const parsedLocation = computed(() => parseLocation(locationRaw.value));
 
 function submitManual() {
-  if (!parsed.value) return;
-  store.setPosition(parsed.value.lat, parsed.value.lng, 'manual');
+  if (!parsedLocation.value) return;
+  store.setPosition(
+    parsedLocation.value.lat,
+    parsedLocation.value.lng,
+    'manual',
+  );
   locationRaw.value = '';
   showManualInput.value = false;
 }
@@ -289,6 +311,7 @@ watch(
   (open) => {
     if (open) {
       Object.assign(draft, draftFromStore());
+    } else {
       showManualInput.value = false;
       locationRaw.value = '';
     }
