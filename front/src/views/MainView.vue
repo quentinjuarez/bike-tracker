@@ -56,14 +56,12 @@ import OnboardingModal from '../components/OnboardingModal.vue';
 import SettingsPanel from '../components/SettingsPanel.vue';
 import SpinnerIcon from '../components/SpinnerIcon.vue';
 import { useBikes } from '../composables/useBikes';
-import { useGeolocation } from '../composables/useGeolocation';
 import { applyQueryParams } from '../composables/useQueryParams';
 import { useProfileStore } from '../stores/profile';
 import { ALL_PROVIDERS, FILTER_BOUNDS, UNSET } from '../types';
 
 const store = useProfileStore();
 const { t } = useI18n();
-const { locate } = useGeolocation();
 
 const showList = ref(false);
 const showSettings = ref(false);
@@ -80,45 +78,42 @@ onMounted(() => {
   // Query params take priority (shared link / embed-like usage on main view)
   applyQueryParams(window.location.search);
 
-  // Auto re-locate if GPS was active in previous session
-  if (store.locationMode === 'geo') {
-    locate();
-  }
-
   // Show first-run modal if not previously dismissed
   if (!localStorage.getItem(ONBOARDING_KEY)) {
     showOnboarding.value = true;
   }
 });
 
-// Keep URL in sync with the store
+// Keep URL in sync with the store.
+// Geo position is NOT written to the URL — it's device-specific and would be
+// re-applied as 'manual' on refresh. Only manual positions go in the URL.
 watch(
-  () =>
-    store.hasPosition
-      ? {
-          lat: store.lat,
-          lng: store.lng,
-          providers: store.providers.join(','),
-          limit: store.limit,
-          maxDistance: store.maxDistance,
-          minBattery: store.minBattery,
-        }
-      : null,
+  () => ({
+    locationMode: store.locationMode,
+    lat: store.lat,
+    lng: store.lng,
+    providers: store.providers.join(','),
+    limit: store.limit,
+    maxDistance: store.maxDistance,
+    minBattery: store.minBattery,
+  }),
   (state) => {
-    if (!state) {
-      window.history.replaceState({}, '', window.location.pathname);
-      return;
-    }
     const params = new URLSearchParams();
-    params.set('lat', state.lat!.toString());
-    params.set('lng', state.lng!.toString());
+
+    if (state.locationMode === 'manual' && state.lat != null && state.lng != null) {
+      params.set('lat', state.lat.toString());
+      params.set('lng', state.lng.toString());
+    }
+
     if (state.providers !== ALL_PROVIDERS.join(',')) params.set('providers', state.providers);
     if (state.limit !== FILTER_BOUNDS.limit.default) params.set('limit', state.limit.toString());
     if (state.maxDistance !== FILTER_BOUNDS.maxDistance.default)
       params.set('maxDist', (state.maxDistance === UNSET ? 0 : state.maxDistance).toString());
     if (state.minBattery !== FILTER_BOUNDS.minBattery.default)
       params.set('minBat', (state.minBattery === UNSET ? 0 : state.minBattery).toString());
-    window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+
+    const qs = params.toString();
+    window.history.replaceState({}, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
   },
 );
 

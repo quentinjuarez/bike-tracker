@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 
 import { useProfileStore } from '../stores/profile';
 import {
@@ -8,24 +8,18 @@ import {
   type VelibStation,
   type MapEntity,
   type Provider,
-  VEHICLE_TYPES,
   UNSET,
 } from '../types';
 
 interface RawVelibStation {
   station_id: string;
-  stationCode?: string;
-  name: string | null;
   lat: number;
   lon: number;
-  capacity: number | null;
-  num_bikes_available?: number;
-  mechanical?: number;
-  ebike?: number;
-  num_docks_available?: number;
-  is_installed?: number;
+  num_bikes_available: number;
+  mechanical: number;
+  ebike: number;
+  num_docks_available: number;
   is_renting?: number;
-  is_returning?: number;
 }
 
 // Re-export for convenience
@@ -42,19 +36,21 @@ export function haversineDistance(lat1: number, lon1: number, lat2: number, lon2
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+const PARIS = { lat: 48.8566, lng: 2.3522 };
+
 export function useBikes(opts?: { proxyBase?: string }) {
   const store = useProfileStore();
   const bikes = ref<MapEntity[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
   const nextRefresh = ref(0);
-  const active = ref(false);
 
   const proxyBase = opts?.proxyBase ?? '';
 
-  let timer: ReturnType<typeof setTimeout> | null = null;
+  let fetchTimer: ReturnType<typeof setTimeout> | null = null;
   let countdownTimer: ReturnType<typeof setInterval> | null = null;
-  let stopped = false;
+
+  // ── Fetch helpers ────────────────────────────────────────────────────
 
   async function fetchProvider(
     provider: Provider,
@@ -66,32 +62,13 @@ export function useBikes(opts?: { proxyBase?: string }) {
     const json = (await res.json()) as GbfsResponse;
 
     return (json.data?.bikes || []).map((b: GbfsBike) => {
-      const lat = Number(b.lat);
-      const lon = Number(b.lon);
-      const distance = haversineDistance(userLat, userLng, lat, lon);
-      const vtId = b.vehicle_type_id as string | undefined;
-      const vtInfo = vtId ? VEHICLE_TYPES[vtId] : undefined;
-      const max_range_meters = vtInfo?.max_range_meters;
-      const current_range_meters =
-        b.current_range_meters != null ? Number(b.current_range_meters) : undefined;
-      const battery_percent =
-        b.current_fuel_percent != null
-          ? Math.min(100, Math.round(Number(b.current_fuel_percent) * 100))
-          : current_range_meters != null && max_range_meters
-            ? Math.min(100, Math.round((current_range_meters / max_range_meters) * 100))
-            : undefined;
+      const distance = haversineDistance(userLat, userLng, b.lat, b.lon);
       return {
         kind: 'bike',
         bike_id: b.bike_id,
-        lat,
-        lon,
-        is_reserved: b.is_reserved,
-        is_disabled: b.is_disabled,
-        vehicle_type_id: vtId,
-        form_factor: vtInfo?.form_factor,
-        current_range_meters,
-        max_range_meters,
-        battery_percent,
+        lat: b.lat,
+        lon: b.lon,
+        battery_percent: b.battery_percent,
         distance,
         provider,
       } satisfies Bike;
@@ -104,32 +81,24 @@ export function useBikes(opts?: { proxyBase?: string }) {
     const json = (await res.json()) as { stations: RawVelibStation[] };
 
     return (json.stations || []).map((s: RawVelibStation) => {
-      const lat = Number(s.lat);
-      const lon = Number(s.lon);
-      const distance = haversineDistance(userLat, userLng, lat, lon);
+      const distance = haversineDistance(userLat, userLng, s.lat, s.lon);
       return {
         kind: 'station',
         station_id: s.station_id,
-        stationCode: s.stationCode,
-        name: s.name,
-        lat,
-        lon,
-        capacity: s.capacity,
-        num_bikes_available: s.num_bikes_available ?? 0,
-        mechanical: s.mechanical ?? 0,
-        ebike: s.ebike ?? 0,
-        num_docks_available: s.num_docks_available ?? 0,
-        is_installed: s.is_installed,
+        lat: s.lat,
+        lon: s.lon,
+        num_bikes_available: s.num_bikes_available,
+        mechanical: s.mechanical,
+        ebike: s.ebike,
+        num_docks_available: s.num_docks_available,
         is_renting: s.is_renting,
-        is_returning: s.is_returning,
         distance,
         provider: 'velib' as const,
       } satisfies VelibStation;
     });
   }
 
-  // Paris city centre – used for distance calculations when no user position is known
-  const PARIS = { lat: 48.8566, lng: 2.3522 };
+  // ── Core fetch ───────────────────────────────────────────────────────
 
   async function fetchOnce() {
     const userLat = store.lat ?? PARIS.lat;
@@ -138,7 +107,6 @@ export function useBikes(opts?: { proxyBase?: string }) {
     loading.value = true;
     error.value = null;
     try {
-      // Split bike providers from velib
       const bikeProviders = store.providers.filter((p) => p !== 'velib') as Exclude<
         Provider,
         'velib'
@@ -156,26 +124,20 @@ export function useBikes(opts?: { proxyBase?: string }) {
 
       for (const [i, result] of results.entries()) {
         if (result.status === 'fulfilled') {
-          for (const entity of result.value) {
-            all.push(entity);
-          }
+          all.push(...result.value);
         } else {
           errors.push(`${allProviders[i]}: ${result.reason?.message ?? result.reason}`);
         }
       }
 
-      if (errors.length && !all.length) {
-        throw new Error(errors.join('; '));
-      }
+      if (errors.length && !all.length) throw new Error(errors.join('; '));
 
       let filtered = all;
 
-      // Max distance filter – only meaningful when the user has a real position
       if (store.hasPosition && store.maxDistance !== UNSET && store.maxDistance > 0) {
         filtered = filtered.filter((e) => e.distance != null && e.distance <= store.maxDistance);
       }
 
-      // Min battery filter (-1 = any), only applies to bikes (stations always pass)
       if (store.minBattery !== UNSET && store.minBattery > 0) {
         filtered = filtered.filter(
           (e) =>
@@ -192,72 +154,75 @@ export function useBikes(opts?: { proxyBase?: string }) {
     }
   }
 
+  // ── Scheduling ───────────────────────────────────────────────────────
+
   function clearTimers() {
-    if (timer) {
-      clearTimeout(timer);
-      timer = null;
-    }
+    if (fetchTimer) { clearTimeout(fetchTimer); fetchTimer = null; }
+    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+    // Do NOT update nextRefresh here — avoid synchronous reactive mutations
+    // inside watcher callbacks which can conflict with mid-mount component updates
   }
 
   function scheduleNext() {
-    if (stopped || !active.value) return;
+    clearTimers();
     const intervalMs = store.pollInterval * 1000;
-    nextRefresh.value = store.pollInterval;
-    timer = setTimeout(async () => {
+
+    fetchTimer = setTimeout(async () => {
+      clearTimers();
       await fetchOnce();
       scheduleNext();
     }, intervalMs);
+
+    // Defer countdown to next tick so it doesn't trigger re-renders
+    // in the same flush cycle as position-driven component mounts (LMarker v-if)
+    nextTick(() => {
+      nextRefresh.value = store.pollInterval;
+      countdownTimer = setInterval(() => {
+        if (nextRefresh.value > 0) nextRefresh.value -= 1;
+      }, 1000);
+    });
   }
 
-  function startPolling() {
-    if (active.value) return;
-    active.value = true;
-    stopped = false;
-    fetchOnce().then(() => scheduleNext());
-
-    countdownTimer = setInterval(() => {
-      if (nextRefresh.value > 0) {
-        nextRefresh.value -= 1;
-      }
-    }, 1000);
-  }
-
-  function stopPolling() {
-    active.value = false;
-    stopped = true;
+  // Fetch immediately then schedule the next cycle.
+  // Does NOT clear bikes during the fetch — stale data stays visible.
+  async function refresh() {
     clearTimers();
-    if (countdownTimer) {
-      clearInterval(countdownTimer);
-      countdownTimer = null;
-    }
-    bikes.value = [];
-    nextRefresh.value = 0;
+    await fetchOnce();
+    scheduleNext();
   }
 
-  // Watch for store changes → restart polling (position change updates distance calculations)
+  // ── Reactivity ───────────────────────────────────────────────────────
+
+  // Re-fetch when position changes (user moved or GPS updated)
   watch(
-    () => [
-      store.lat,
-      store.lng,
-      store.providers,
-      store.maxDistance,
-      store.minBattery,
-      store.pollInterval,
-    ],
-    () => {
-      stopPolling();
-      startPolling();
+    () => [store.lat, store.lng] as const,
+    ([lat, lng], [prevLat, prevLng]) => {
+      if (lat === prevLat && lng === prevLng) return;
+      refresh();
     },
-    { deep: true },
   );
 
-  onMounted(() => {
-    startPolling();
-  });
+  // Re-fetch when provider list changes (different API endpoints)
+  watch(
+    () => [...store.providers].sort().join(','),
+    (val, prev) => {
+      if (val === prev) return;
+      refresh();
+    },
+  );
+
+  // Reschedule (no immediate fetch) when poll interval changes
+  watch(
+    () => store.pollInterval,
+    () => { scheduleNext(); },
+  );
+
+  onMounted(() => { refresh(); });
 
   onUnmounted(() => {
-    stopPolling();
+    clearTimers();
+    bikes.value = [];
   });
 
-  return { bikes, loading, error, nextRefresh, active };
+  return { bikes, loading, error, nextRefresh };
 }

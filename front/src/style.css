@@ -24,6 +24,19 @@
   --color-accent-950: #2e1065;
 }
 
+/* ── Prevent white flash before Vue mounts ─────────────────────────── */
+html {
+  background-color: #fafaf9;
+}
+@media (prefers-color-scheme: dark) {
+  html:not(.light) {
+    background-color: #0c0c14;
+  }
+}
+html.dark {
+  background-color: #0c0c14;
+}
+
 /* ── Light mode defaults ───────────────────────────────────────────── */
 :root {
   color-scheme: light;

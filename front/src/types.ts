@@ -11,87 +11,11 @@ export const PROVIDER_COLORS: Record<Provider, string> = {
   velib: '#6b3fa0',
 };
 
-// ── Vehicle types ───────────────────────────────────────────────────
-
-export type FormFactor = 'scooter' | 'bicycle';
-export type PropulsionType = 'electric' | 'electric_assist' | 'human';
-
-export interface VehicleType {
-  vehicle_type_id: string;
-  form_factor: FormFactor;
-  propulsion_type: PropulsionType;
-  name?: string;
-  rider_capacity?: number;
-  max_range_meters?: number;
-}
-
-// Lime vehicle type IDs
-export type LimeVehicleTypeId = '1' | '2' | '3' | '4';
-
-// Voi vehicle type IDs
-export type VoiVehicleTypeId = 'voi_scooter' | 'voi_bike';
-
-// Dott vehicle type IDs
-export type DottVehicleTypeId = 'dott_bicycle';
-
-export const VEHICLE_TYPES: Record<string, VehicleType> = {
-  // Lime
-  '1': {
-    vehicle_type_id: '1',
-    form_factor: 'scooter',
-    propulsion_type: 'electric',
-    max_range_meters: 24140,
-  },
-  '2': {
-    vehicle_type_id: '2',
-    form_factor: 'scooter',
-    propulsion_type: 'electric',
-    max_range_meters: 40233,
-  },
-  '3': {
-    vehicle_type_id: '3',
-    form_factor: 'bicycle',
-    propulsion_type: 'electric_assist',
-    max_range_meters: 85000,
-  },
-  '4': {
-    vehicle_type_id: '4',
-    form_factor: 'bicycle',
-    propulsion_type: 'human',
-  },
-  // Voi
-  voi_scooter: {
-    vehicle_type_id: 'voi_scooter',
-    form_factor: 'scooter',
-    propulsion_type: 'electric',
-    name: 'scooter',
-    rider_capacity: 1,
-    max_range_meters: 80000,
-  },
-  voi_bike: {
-    vehicle_type_id: 'voi_bike',
-    form_factor: 'bicycle',
-    propulsion_type: 'electric_assist',
-    name: 'bicycle',
-    rider_capacity: 1,
-    max_range_meters: 80000,
-  },
-  // Dott
-  dott_bicycle: {
-    vehicle_type_id: 'dott_bicycle',
-    form_factor: 'bicycle',
-    propulsion_type: 'electric_assist',
-    name: 'bicycle',
-    max_range_meters: 100000,
-  },
-};
-
 // ── GBFS types ──────────────────────────────────────────────────────
 
+// Battery is pre-computed server-side (back/index.js parseBike + computeBattery).
+// Only 4 fields are sent per bike — everything else is derived or added client-side.
 export interface GbfsResponse {
-  last_updated: number;
-  ttl: number;
-  version: string;
   data: { bikes: GbfsBike[] };
 }
 
@@ -99,12 +23,7 @@ export interface GbfsBike {
   bike_id: string;
   lat: number;
   lon: number;
-  is_reserved: boolean;
-  is_disabled: boolean;
-  current_range_meters?: number;
-  current_fuel_percent?: number;
-  vehicle_type_id?: string;
-  last_reported?: number;
+  battery_percent: number | null;
 }
 
 // ── App bike (enriched) ─────────────────────────────────────────────
@@ -114,13 +33,7 @@ export interface Bike {
   bike_id: string;
   lat: number;
   lon: number;
-  is_reserved?: boolean;
-  is_disabled?: boolean;
-  vehicle_type_id?: string;
-  form_factor?: FormFactor;
-  current_range_meters?: number;
-  max_range_meters?: number;
-  battery_percent?: number;
+  battery_percent: number | null;
   distance?: number;
   provider: Provider;
 }
@@ -130,18 +43,13 @@ export interface Bike {
 export interface VelibStation {
   kind: 'station';
   station_id: string;
-  stationCode?: string;
-  name: string | null;
   lat: number;
   lon: number;
-  capacity: number | null;
   num_bikes_available: number;
   mechanical: number;
   ebike: number;
   num_docks_available: number;
-  is_installed?: number;
   is_renting?: number;
-  is_returning?: number;
   distance?: number;
   provider: 'velib';
 }

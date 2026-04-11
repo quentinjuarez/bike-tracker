@@ -92,13 +92,17 @@ const tileAttribution = computed(() =>
 const PARIS_LAT = 48.8566;
 const PARIS_LNG = 2.3522;
 const INIT_ZOOM = 16;
-const initCenter: [number, number] = [PARIS_LAT, PARIS_LNG];
+// Must be a ref (not a plain const) so Vue's compiler sees :center as dynamic
+// and doesn't hoist the <l-map> vnode — hoisted vnodes can't carry internal refs
+// (vue-leaflet uses refs internally on child nodes, causing the "hoisted vnode" warning).
+const initCenter = ref<[number, number]>([PARIS_LAT, PARIS_LNG]);
 
 const ready = ref(false);
 
 // Plain (non-reactive) Leaflet references — never wrap Leaflet objects in Vue reactive
 let leafletMap: L.Map | null = null;
 let markersLayer: L.LayerGroup | null = null;
+let sharedTooltip: L.Tooltip | null = null;
 let boundsTimer: ReturnType<typeof setTimeout> | null = null;
 
 // Reactive bounds: plain serialisable data, safe to be reactive
@@ -116,7 +120,11 @@ onMounted(() => {
 onUnmounted(() => {
   if (boundsTimer) clearTimeout(boundsTimer);
   activeMarkers.clear();
-  markersLayer?.clearLayers();
+  if (markersLayer && leafletMap) {
+    try { leafletMap.removeLayer(markersLayer); } catch { /* already detached */ }
+  }
+  markersLayer = null;
+  leafletMap = null;
 });
 
 function refreshBounds(map: L.Map) {
@@ -132,6 +140,18 @@ function refreshBounds(map: L.Map) {
 function onMapReady(map: L.Map) {
   leafletMap = map;
   markersLayer = L.layerGroup().addTo(map);
+
+  // If position is already known (persisted session), center immediately
+  // The watch won't fire in this case since the props didn't change after setup
+  if (props.userLat != null && props.userLng != null) {
+    map.setView([props.userLat, props.userLng], INIT_ZOOM);
+    mapBounds.value = {
+      n: props.userLat + Z16_PAD_LAT,
+      s: props.userLat - Z16_PAD_LAT,
+      e: props.userLng + Z16_PAD_LNG,
+      w: props.userLng - Z16_PAD_LNG,
+    };
+  }
 
   refreshBounds(map);
 
@@ -349,6 +369,33 @@ function tooltipHtml(entity: MapEntity): string {
 // Only adds/removes/updates markers that actually changed.
 // Stable markers never get destroyed → no flicker during pan/zoom.
 
+function addMarker(entity: MapEntity, isDark: boolean, animate = false) {
+  if (!markersLayer) return;
+  const icon =
+    entity.kind === 'bike' ? bikeIcon(entity, isDark, animate) : stationIcon(entity, isDark, animate);
+  const marker = L.marker([entity.lat, entity.lon], { icon }).bindTooltip(tooltipHtml(entity), {
+    sticky: true,
+    interactive: false,
+  });
+  markersLayer.addLayer(marker);
+  activeMarkers.set(entityKey(entity), { marker, entity });
+}
+
+function rebuildMarkers(entities: MapEntity[], isDark: boolean) {
+  if (!leafletMap) return;
+  activeMarkers.clear();
+  // Abandon the broken layer group entirely — map.removeLayer(group) removes
+  // the container as a unit without iterating children, so it never triggers
+  // the _leaflet_events crash that clearLayers() causes with dual instances.
+  if (markersLayer) {
+    try { leafletMap.removeLayer(markersLayer); } catch { /* ignore detached group */ }
+  }
+  markersLayer = L.layerGroup().addTo(leafletMap);
+  for (const entity of entities) {
+    addMarker(entity, isDark, false);
+  }
+}
+
 watch(displayEntities, (entities) => {
   if (!markersLayer) return;
   const isDark = theme.value === 'dark';
@@ -357,10 +404,16 @@ watch(displayEntities, (entities) => {
   const nextMap = new Map<string, MapEntity>();
   for (const e of entities) nextMap.set(entityKey(e), e);
 
-  // Remove markers that left the viewport
+  // Remove markers that left the viewport — if Leaflet throws (dual-instance
+  // _leaflet_events bug), nuke the whole layer and rebuild from scratch
   for (const [key, { marker }] of activeMarkers) {
     if (!nextMap.has(key)) {
-      markersLayer.removeLayer(marker);
+      try {
+        markersLayer.removeLayer(marker);
+      } catch {
+        rebuildMarkers(entities, isDark);
+        return;
+      }
       activeMarkers.delete(key);
     }
   }
@@ -370,15 +423,7 @@ watch(displayEntities, (entities) => {
     const existing = activeMarkers.get(key);
 
     if (!existing) {
-      // New marker in viewport — fade in via className animation
-      const icon =
-        entity.kind === 'bike' ? bikeIcon(entity, isDark, true) : stationIcon(entity, isDark, true);
-      const marker = L.marker([entity.lat, entity.lon], { icon }).bindTooltip(tooltipHtml(entity), {
-        sticky: true,
-        interactive: false,
-      });
-      markersLayer.addLayer(marker);
-      activeMarkers.set(key, { marker, entity });
+      addMarker(entity, isDark, true);
     } else if (!entitiesEqual(existing.entity, entity)) {
       // Data changed — update in place without destroying the marker
       if (existing.entity.lat !== entity.lat || existing.entity.lon !== entity.lon) {

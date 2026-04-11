@@ -118,6 +118,54 @@ const FREE_BIKE_URLS = {
 const VELIB_BASE =
   'https://velib-metropole-opendata.smovengo.cloud/opendata/Velib_Metropole';
 
+// -- Parsers ----------------------------------------------------------------
+
+// Max range per vehicle_type_id (metres) — used to derive battery % when the
+// provider only gives current_range_meters instead of current_fuel_percent.
+const MAX_RANGE = {
+  // Lime
+  '1': 24140,
+  '2': 40233,
+  '3': 85000,
+  // Voi
+  voi_scooter: 80000,
+  voi_bike: 80000,
+  // Dott
+  dott_bicycle: 100000,
+};
+
+/**
+ * Compute 0–100 integer battery percent from raw GBFS fields.
+ * Returns null when not determinable.
+ */
+function computeBattery(b) {
+  if (b.current_fuel_percent != null) {
+    return Math.min(100, Math.round(Number(b.current_fuel_percent) * 100));
+  }
+  const maxRange = b.vehicle_type_id ? MAX_RANGE[b.vehicle_type_id] : undefined;
+  if (b.current_range_meters != null && maxRange) {
+    return Math.min(100, Math.round((Number(b.current_range_meters) / maxRange) * 100));
+  }
+  return null;
+}
+
+/**
+ * Strip a raw GBFS bike to the 4 fields the frontend actually uses.
+ * Battery is pre-computed here so the frontend needs no VEHICLE_TYPES lookup.
+ * Returns null for bikes with invalid coordinates (skipped by the caller).
+ */
+function parseBike(b) {
+  const lat = Number(b.lat);
+  const lon = Number(b.lon);
+  if (isNaN(lat) || isNaN(lon)) return null;
+  return {
+    bike_id: b.bike_id,
+    lat,
+    lon,
+    battery_percent: computeBattery(b),
+  };
+}
+
 // -- Route handlers ---------------------------------------------------------
 
 async function handleFreeBikeStatus(res, provider) {
@@ -126,7 +174,10 @@ async function handleFreeBikeStatus(res, provider) {
 
   const r = await fetch(FREE_BIKE_URLS[provider]);
   if (!r.ok) throw new Error(`upstream returned ${r.status}`);
-  const data = await r.json();
+  const raw = await r.json();
+
+  const bikes = (raw.data?.bikes ?? []).map(parseBike).filter(Boolean);
+  const data = { data: { bikes } };
   await setCache(`${provider}_bikes`, data, 30);
   sendJson(res, 200, data);
 }
@@ -162,19 +213,13 @@ async function handleVelibStations(res) {
     const types = s.num_bikes_available_types ?? [];
     acc.push({
       station_id: String(s.station_id),
-      stationCode: s.stationCode ?? info.stationCode,
-      name: info.name ?? null,
       lat,
       lon,
-      capacity: info.capacity ?? null,
       num_bikes_available: s.num_bikes_available ?? s.numBikesAvailable ?? 0,
       mechanical: types.find((t) => t.mechanical != null)?.mechanical ?? 0,
       ebike: types.find((t) => t.ebike != null)?.ebike ?? 0,
       num_docks_available: s.num_docks_available ?? s.numDocksAvailable ?? 0,
-      is_installed: s.is_installed,
       is_renting: s.is_renting,
-      is_returning: s.is_returning,
-      last_reported: s.last_reported ?? null,
     });
     return acc;
   }, []);
