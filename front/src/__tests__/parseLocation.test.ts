@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+
 import { parseLocation } from '../utils/parseLocation';
 
 describe('parseLocation', () => {
@@ -194,47 +195,49 @@ describe('parseLocation', () => {
   // ── Google Maps URLs ───────────────────────────────────────────────
   describe('Google Maps URLs', () => {
     it('@lat,lng in path', () => {
-      expect(
-        parseLocation('https://www.google.com/maps/@48.8566,2.3522,15z'),
-      ).toEqual({ lat: 48.8566, lng: 2.3522 });
+      expect(parseLocation('https://www.google.com/maps/@48.8566,2.3522,15z')).toEqual({
+        lat: 48.8566,
+        lng: 2.3522,
+      });
     });
 
     it('place/@lat,lng in path', () => {
-      expect(
-        parseLocation(
-          'https://www.google.com/maps/place/Paris/@48.8566,2.3522,15z',
-        ),
-      ).toEqual({ lat: 48.8566, lng: 2.3522 });
+      expect(parseLocation('https://www.google.com/maps/place/Paris/@48.8566,2.3522,15z')).toEqual({
+        lat: 48.8566,
+        lng: 2.3522,
+      });
     });
 
     it('?q=lat,lng', () => {
-      expect(
-        parseLocation('https://maps.google.com/?q=48.8566,2.3522'),
-      ).toEqual({ lat: 48.8566, lng: 2.3522 });
+      expect(parseLocation('https://maps.google.com/?q=48.8566,2.3522')).toEqual({
+        lat: 48.8566,
+        lng: 2.3522,
+      });
     });
 
     it('?q=lat,lng with extra params', () => {
-      expect(
-        parseLocation('https://www.google.com/maps?q=48.8566,2.3522&z=15'),
-      ).toEqual({ lat: 48.8566, lng: 2.3522 });
+      expect(parseLocation('https://www.google.com/maps?q=48.8566,2.3522&z=15')).toEqual({
+        lat: 48.8566,
+        lng: 2.3522,
+      });
     });
 
     it('negative coords in URL', () => {
-      expect(
-        parseLocation('https://www.google.com/maps/@-33.8688,151.2093,15z'),
-      ).toEqual({ lat: -33.8688, lng: 151.2093 });
+      expect(parseLocation('https://www.google.com/maps/@-33.8688,151.2093,15z')).toEqual({
+        lat: -33.8688,
+        lng: 151.2093,
+      });
     });
 
     it('place/lat,lng', () => {
-      expect(
-        parseLocation('https://www.google.com/maps/place/48.8566,2.3522'),
-      ).toEqual({ lat: 48.8566, lng: 2.3522 });
+      expect(parseLocation('https://www.google.com/maps/place/48.8566,2.3522')).toEqual({
+        lat: 48.8566,
+        lng: 2.3522,
+      });
     });
 
     it('returns null for unparseable URL', () => {
-      expect(
-        parseLocation('https://www.google.com/maps/place/Paris'),
-      ).toBeNull();
+      expect(parseLocation('https://www.google.com/maps/place/Paris')).toBeNull();
     });
   });
 

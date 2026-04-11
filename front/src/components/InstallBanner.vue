@@ -1,39 +1,33 @@
 <template>
   <Transition name="slide-up">
-    <div v-if="showBanner" class="fixed bottom-4 inset-x-0 z-1100 p-4">
+    <div v-if="showBanner" class="fixed inset-x-0 bottom-4 z-1100 p-4">
       <div
-        class="max-w-sm mx-auto bg-accent-500/5 dark:bg-black/10 border border-accent-100 dark:border-accent-900 rounded-2xl px-4 py-3 shadow-xl backdrop-blur-sm flex flex-col md:flex-row md:items-center gap-3"
+        class="mx-auto flex max-w-sm flex-col gap-3 rounded-2xl border border-accent-100 bg-accent-500/5 px-4 py-3 shadow-xl backdrop-blur-sm md:flex-row md:items-center dark:border-accent-900 dark:bg-black/10"
       >
         <!-- Text -->
-        <div class="flex-1 min-w-0">
+        <div class="min-w-0 flex-1">
           <p
-            class="text-xs font-semibold text-accent-700 dark:text-accent-300 tracking-wide truncate"
+            class="truncate text-xs font-semibold tracking-wide text-accent-700 dark:text-accent-300"
           >
             {{ t('install.title') }}
           </p>
-          <p
-            class="text-[10px] text-accent-400 dark:text-accent-500 leading-tight mt-0.5"
-          >
+          <p class="mt-0.5 text-[10px] leading-tight text-accent-400 dark:text-accent-500">
             {{ t('install.subtitle') }}
           </p>
         </div>
 
         <!-- Actions -->
-        <div class="flex items-center gap-2 flex-none w-full md:w-auto">
+        <div class="flex w-full flex-none items-center gap-2 md:w-auto">
           <BaseButton
             variant="ghost"
             size="sm"
-            class="uppercase w-full md:w-auto"
+            class="w-full uppercase md:w-auto"
             @click="onDismiss"
           >
             {{ t('install.later') }}
           </BaseButton>
 
-          <BaseButton
-            size="sm"
-            class="uppercase w-full md:w-auto"
-            @click="onInstall"
-          >
+          <BaseButton size="sm" class="w-full uppercase md:w-auto" @click="onInstall">
             {{ t('install.install') }}
           </BaseButton>
         </div>
@@ -44,6 +38,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
+
 import { useInstallPrompt } from '../composables/useInstallPrompt';
 import BaseButton from './BaseButton.vue';
 

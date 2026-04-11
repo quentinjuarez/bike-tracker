@@ -2,9 +2,7 @@
   <div class="space-y-1">
     <div class="flex justify-between text-xs">
       <span>{{ label }}</span>
-      <span class="text-accent-400 dark:text-accent-500 font-mono">{{
-        displayValue
-      }}</span>
+      <span class="font-mono text-accent-400 dark:text-accent-500">{{ displayValue }}</span>
     </div>
     <input
       type="range"

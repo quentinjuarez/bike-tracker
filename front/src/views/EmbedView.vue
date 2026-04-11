@@ -1,14 +1,12 @@
 <template>
-  <div class="relative w-full h-full overflow-hidden bg-black">
+  <div class="relative h-full w-full overflow-hidden bg-black">
     <!-- Missing params error -->
     <div
       v-if="missingParams"
-      class="flex items-center justify-center h-full text-accent-500 dark:text-accent-400 text-sm"
+      class="flex h-full items-center justify-center text-sm text-accent-500 dark:text-accent-400"
     >
       Missing required query params:
-      <code class="ml-2 text-accent-500 dark:text-accent-400 font-mono"
-        >?lat=…&lng=…</code
-      >
+      <code class="ml-2 font-mono text-accent-500 dark:text-accent-400">?lat=…&lng=…</code>
     </div>
 
     <template v-else>
@@ -27,7 +25,7 @@
       <!-- Minimal error toast -->
       <div
         v-if="error"
-        class="fixed bottom-4 left-1/2 -translate-x-1/2 z-1000 bg-red-900 text-red-400 text-xs font-mono px-3 py-2 rounded-lg shadow-lg border border-red-800"
+        class="fixed bottom-4 left-1/2 z-1000 -translate-x-1/2 rounded-lg border border-red-800 bg-red-900 px-3 py-2 font-mono text-xs text-red-400 shadow-lg"
       >
         {{ error }}
       </div>
@@ -37,10 +35,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useProfileStore } from '../stores/profile';
+
+import BikeMap from '../components/BikeMap.vue';
 import { useBikes } from '../composables/useBikes';
 import { applyQueryParams } from '../composables/useQueryParams';
-import BikeMap from '../components/BikeMap.vue';
+import { useProfileStore } from '../stores/profile';
 // import SpinnerIcon from '../components/SpinnerIcon.vue';
 
 const store = useProfileStore();

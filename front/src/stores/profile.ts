@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+
 import {
   type Provider,
   type LocationMode,
@@ -49,16 +50,12 @@ export const useProfileStore = defineStore('profile', {
 
     setMaxDistance(value: number) {
       this.maxDistance =
-        value === UNSET
-          ? UNSET
-          : Math.max(0, Math.min(FILTER_BOUNDS.maxDistance.max, value));
+        value === UNSET ? UNSET : Math.max(0, Math.min(FILTER_BOUNDS.maxDistance.max, value));
     },
 
     setMinBattery(value: number) {
       this.minBattery =
-        value === UNSET
-          ? UNSET
-          : Math.max(0, Math.min(FILTER_BOUNDS.minBattery.max, value));
+        value === UNSET ? UNSET : Math.max(0, Math.min(FILTER_BOUNDS.minBattery.max, value));
     },
 
     setPollInterval(value: number) {

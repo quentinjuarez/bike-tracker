@@ -3,16 +3,16 @@
     <Transition name="fade">
       <div
         v-if="open"
-        class="fixed inset-0 bg-accent-500/5 dark:bg-black/10 backdrop-blur-sm z-2000"
+        class="fixed inset-0 z-2000 bg-accent-500/5 backdrop-blur-sm dark:bg-black/10"
         @click.self="emit('close')"
       />
     </Transition>
     <Transition name="slide">
       <div
         v-if="open"
-        class="fixed bottom-0 left-0 right-0 max-h-[85dvh] rounded-t-2xl border-t border-accent-100 dark:border-accent-900 bg-white dark:bg-black text-accent-700 dark:text-accent-300 z-2001 overflow-y-auto md:top-0 md:bottom-auto md:left-auto md:right-0 md:h-full md:max-h-none md:w-xl md:rounded-none md:border-t-0 md:border-l"
+        class="fixed right-0 bottom-0 left-0 z-2001 max-h-[85dvh] overflow-y-auto rounded-t-2xl border-t border-accent-100 bg-white text-accent-700 md:top-0 md:right-0 md:bottom-auto md:left-auto md:h-full md:max-h-none md:w-xl md:rounded-none md:border-t-0 md:border-l dark:border-accent-900 dark:bg-black dark:text-accent-300"
       >
-        <div class="p-6 space-y-6">
+        <div class="space-y-6 p-6">
           <!-- Header -->
           <div class="flex items-center justify-between">
             <h2 class="text-base font-semibold tracking-wide">
@@ -20,23 +20,19 @@
             </h2>
             <div class="flex items-center gap-2">
               <ThemeSwitcher />
-              <BaseButton variant="ghost" size="sm" class="px-2!" @click="save">
-                ✕
-              </BaseButton>
+              <BaseButton variant="ghost" size="sm" class="px-2!" @click="save"> ✕ </BaseButton>
             </div>
           </div>
 
           <!-- ── Providers ─────────────────────────────────────────── -->
           <section class="space-y-2">
-            <h3
-              class="text-xs uppercase tracking-widest text-accent-500 font-medium"
-            >
+            <h3 class="text-xs font-medium tracking-widest text-accent-500 uppercase">
               {{ t('settings.providers') }}
             </h3>
             <label
               v-for="p in allProviders"
               :key="p.id"
-              class="flex items-center gap-3 cursor-pointer"
+              class="flex cursor-pointer items-center gap-3"
             >
               <input
                 type="checkbox"
@@ -52,9 +48,7 @@
 
           <!-- ── Filters ───────────────────────────────────────────── -->
           <section class="space-y-4">
-            <h3
-              class="text-xs uppercase tracking-widest text-accent-500 font-medium"
-            >
+            <h3 class="text-xs font-medium tracking-widest text-accent-500 uppercase">
               {{ t('settings.filters') }}
             </h3>
 
@@ -68,41 +62,32 @@
                     })
               "
               :model-value="
-                draft.maxDistance === UNSET
-                  ? 0
-                  : metersToWalkMinutes(draft.maxDistance)
+                draft.maxDistance === UNSET ? 0 : metersToWalkMinutes(draft.maxDistance)
               "
               :min="0"
               :max="20"
               :step="1"
               @update:model-value="
-                draft.maxDistance =
-                  $event === 0 ? UNSET : walkMinutesToMeters($event)
+                draft.maxDistance = $event === 0 ? UNSET : walkMinutesToMeters($event)
               "
             />
 
             <BaseSlider
               :label="t('settings.minBattery')"
               :display-value="
-                draft.minBattery === UNSET
-                  ? t('settings.anyBattery')
-                  : `${draft.minBattery}%`
+                draft.minBattery === UNSET ? t('settings.anyBattery') : `${draft.minBattery}%`
               "
               :model-value="draft.minBattery === UNSET ? 0 : draft.minBattery"
               :min="0"
               :max="FILTER_BOUNDS.minBattery.max"
               :step="FILTER_BOUNDS.minBattery.step"
-              @update:model-value="
-                draft.minBattery = $event === 0 ? UNSET : $event
-              "
+              @update:model-value="draft.minBattery = $event === 0 ? UNSET : $event"
             />
           </section>
 
           <!-- Language -->
           <section class="space-y-2">
-            <h3
-              class="text-xs uppercase tracking-widest text-accent-500 font-medium"
-            >
+            <h3 class="text-xs font-medium tracking-widest text-accent-500 uppercase">
               {{ t('settings.language') }}
             </h3>
             <LanguageSwitcher />
@@ -110,28 +95,24 @@
 
           <!-- ── Location ──────────────────────────────────────────── -->
           <section class="space-y-3">
-            <h3
-              class="text-xs uppercase tracking-widest text-accent-500 font-medium"
-            >
+            <h3 class="text-xs font-medium tracking-widest text-accent-500 uppercase">
               {{ t('settings.location') }}
             </h3>
 
             <!-- Current position + GPS button row -->
-            <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div class="flex flex-wrap items-center justify-between gap-2">
               <div
                 v-if="store.hasPosition"
-                class="flex items-center gap-2 text-xs font-mono text-accent-500 dark:text-accent-400"
+                class="flex items-center gap-2 font-mono text-xs text-accent-500 dark:text-accent-400"
               >
                 <span
                   v-if="store.locationMode === 'geo' && !geoLoading"
                   class="relative flex h-2 w-2 flex-none"
                 >
                   <span
-                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"
+                    class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"
                   />
-                  <span
-                    class="relative inline-flex rounded-full h-2 w-2 bg-green-500"
-                  />
+                  <span class="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
                 </span>
                 <SpinnerIcon v-else-if="geoLoading" size="sm" />
                 {{ store.lat?.toFixed(5) }}, {{ store.lng?.toFixed(5) }}
@@ -142,7 +123,7 @@
               <span v-else class="text-xs text-accent-400">—</span>
 
               <button
-                class="flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-xl bg-accent-500/5 border border-accent-200 dark:border-accent-700 text-accent-600 dark:text-accent-400 hover:bg-accent-100/60 dark:hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                class="flex items-center gap-2 rounded-xl border border-accent-200 bg-accent-500/5 px-3 py-1.5 text-xs font-medium text-accent-600 transition-colors hover:bg-accent-100/60 disabled:cursor-not-allowed disabled:opacity-50 dark:border-accent-700 dark:text-accent-400 dark:hover:bg-white/5"
                 :disabled="geoLoading"
                 @click="locate"
               >
@@ -150,7 +131,7 @@
                 <svg
                   v-else
                   xmlns="http://www.w3.org/2000/svg"
-                  class="w-3.5 h-3.5 flex-none"
+                  class="h-3.5 w-3.5 flex-none"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -181,11 +162,11 @@
                   size="sm"
                   type="text"
                   :placeholder="t('geo.placeholder')"
-                  class="flex-1 min-w-0"
+                  class="min-w-0 flex-1"
                   @keydown.enter="submitManual"
                 />
                 <button
-                  class="shrink-0 text-xs font-medium px-3 py-1.5 rounded-xl bg-accent-500 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-accent-600 transition-colors"
+                  class="shrink-0 rounded-xl bg-accent-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-40"
                   :disabled="!parsedLocation"
                   @click="submitManual"
                 >
@@ -200,7 +181,7 @@
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  class="w-3 h-3 flex-none"
+                  class="h-3 w-3 flex-none"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -219,7 +200,7 @@
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  class="w-3 h-3 flex-none"
+                  class="h-3 w-3 flex-none"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -232,36 +213,20 @@
                 </svg>
                 {{ t('geo.cannotParse') }}
               </div>
-              <p
-                class="text-[10px] text-accent-400 dark:text-accent-600 leading-relaxed"
-              >
+              <p class="text-[10px] leading-relaxed text-accent-400 dark:text-accent-600">
                 {{ t('geo.helperText') }}
               </p>
             </div>
           </section>
 
           <!-- Reset -->
-          <BaseButton
-            variant="danger-ghost"
-            size="sm"
-            class="w-full"
-            @click="resetDraft"
-          >
+          <BaseButton variant="danger-ghost" size="sm" class="w-full" @click="resetDraft">
             {{ t('settings.resetDefaults') }}
           </BaseButton>
 
           <!-- Copy link -->
-          <BaseButton
-            variant="ghost"
-            size="sm"
-            class="w-full"
-            @click="copyLink"
-          >
-            {{
-              linkCopied
-                ? t('settings.linkCopied')
-                : '🔗 ' + t('settings.copyLink')
-            }}
+          <BaseButton variant="ghost" size="sm" class="w-full" @click="copyLink">
+            {{ linkCopied ? t('settings.linkCopied') : '🔗 ' + t('settings.copyLink') }}
           </BaseButton>
 
           <!-- Footer legal links -->
@@ -275,17 +240,18 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+
+import { useGeolocation } from '../composables/useGeolocation';
+import { useProfileStore } from '../stores/profile';
+import { type Provider, ALL_PROVIDERS, FILTER_BOUNDS, UNSET } from '../types';
+import { parseLocation } from '../utils/parseLocation';
+import { metersToWalkMinutes, walkMinutesToMeters } from '../utils/walking';
+import AppFooter from './AppFooter.vue';
 import BaseButton from './BaseButton.vue';
 import BaseInput from './BaseInput.vue';
 import BaseSlider from './BaseSlider.vue';
-import SpinnerIcon from './SpinnerIcon.vue';
-import { useProfileStore } from '../stores/profile';
-import { useGeolocation } from '../composables/useGeolocation';
-import { parseLocation } from '../utils/parseLocation';
-import { metersToWalkMinutes, walkMinutesToMeters } from '../utils/walking';
-import { type Provider, ALL_PROVIDERS, FILTER_BOUNDS, UNSET } from '../types';
-import AppFooter from './AppFooter.vue';
 import LanguageSwitcher from './LanguageSwitcher.vue';
+import SpinnerIcon from './SpinnerIcon.vue';
 import ThemeSwitcher from './ThemeSwitcher.vue';
 
 const props = defineProps<{ open: boolean }>();
@@ -301,11 +267,7 @@ const parsedLocation = computed(() => parseLocation(locationRaw.value));
 
 function submitManual() {
   if (!parsedLocation.value) return;
-  store.setPosition(
-    parsedLocation.value.lat,
-    parsedLocation.value.lng,
-    'manual',
-  );
+  store.setPosition(parsedLocation.value.lat, parsedLocation.value.lng, 'manual');
   locationRaw.value = '';
 }
 
@@ -382,18 +344,11 @@ function copyLink() {
   params.set('lng', store.lng!.toString());
   if (draft.providers.join(',') !== ALL_PROVIDERS.join(','))
     params.set('providers', draft.providers.join(','));
-  if (draft.limit !== FILTER_BOUNDS.limit.default)
-    params.set('limit', draft.limit.toString());
+  if (draft.limit !== FILTER_BOUNDS.limit.default) params.set('limit', draft.limit.toString());
   if (draft.maxDistance !== FILTER_BOUNDS.maxDistance.default)
-    params.set(
-      'maxDist',
-      (draft.maxDistance === UNSET ? 0 : draft.maxDistance).toString(),
-    );
+    params.set('maxDist', (draft.maxDistance === UNSET ? 0 : draft.maxDistance).toString());
   if (draft.minBattery !== FILTER_BOUNDS.minBattery.default)
-    params.set(
-      'minBat',
-      (draft.minBattery === UNSET ? 0 : draft.minBattery).toString(),
-    );
+    params.set('minBat', (draft.minBattery === UNSET ? 0 : draft.minBattery).toString());
 
   const qs = params.toString();
   const url = `${window.location.origin}${window.location.pathname}${qs ? `?${qs}` : ''}`;

@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+
 import { useProfileStore } from '../stores/profile';
 
 // Module-level shared state so all callers (GeoWidget, SettingsPanel, MainView)
@@ -32,8 +33,7 @@ export function useGeolocation() {
         loading.value = false;
         switch (err.code) {
           case err.PERMISSION_DENIED:
-            error.value =
-              'Location access denied. Please enable it in your browser settings.';
+            error.value = 'Location access denied. Please enable it in your browser settings.';
             break;
           case err.POSITION_UNAVAILABLE:
             error.value = 'Location unavailable';

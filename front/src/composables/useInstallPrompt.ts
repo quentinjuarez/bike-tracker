@@ -12,8 +12,7 @@ export function useInstallPrompt() {
   const canInstall = ref(false);
   const isInstalled = ref(false);
   const isDismissed = ref(
-    typeof localStorage !== 'undefined' &&
-      localStorage.getItem(DISMISSED_KEY) === '1',
+    typeof localStorage !== 'undefined' && localStorage.getItem(DISMISSED_KEY) === '1',
   );
   const showBanner = ref(false);
 

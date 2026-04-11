@@ -25,8 +25,7 @@ export default {
   },
   onboarding: {
     title: 'Bike Tracker',
-    subtitle:
-      'Every Paris bike operator on one map — Lime, Voi, Dott and Vélib in real time.',
+    subtitle: 'Every Paris bike operator on one map — Lime, Voi, Dott and Vélib in real time.',
     useGps: 'Use my GPS location',
     or: 'or enter manually',
     supportedFormats: 'Supported formats',
@@ -91,8 +90,7 @@ export default {
       title: '6. Non-Commercial and Informational Use',
       intro:
         'Bike Tracker is intended for {strictlyPersonal}. Any commercial exploitation, redistribution, or integration into a commercial product or service is prohibited without prior written consent from the publisher.',
-      strictlyPersonal:
-        'strictly personal, non-commercial and informational use only',
+      strictlyPersonal: 'strictly personal, non-commercial and informational use only',
       content:
         'The names and trademarks of operators mentioned (Lime, Voi, Dott, V\u00e9lib, etc.) are the exclusive property of their respective owners. Their mention in the application is purely informational and does not constitute a partnership, affiliation, or endorsement by those operators.',
     },
@@ -164,8 +162,7 @@ export default {
     placeholder: '48.8566, 2.3522 or Google Maps link…',
     cannotParse: 'Could not recognise this location',
     confirm: 'Set',
-    helperText:
-      'Paste coordinates (48.8566, 2.3522), a decimal pair or a Google Maps link.',
+    helperText: 'Paste coordinates (48.8566, 2.3522), a decimal pair or a Google Maps link.',
   },
   settings: {
     title: 'Settings',

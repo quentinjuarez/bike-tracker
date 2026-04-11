@@ -1,38 +1,31 @@
 <template>
   <div
-    class="flex flex-col items-center justify-center h-full gap-6 text-accent-700 dark:text-accent-300 px-6"
+    class="flex h-full flex-col items-center justify-center gap-6 px-6 text-accent-700 dark:text-accent-300"
   >
     <h1 class="text-2xl font-semibold tracking-wide">
       {{ t('onboarding.title') }}
     </h1>
-    <p
-      class="text-accent-500 dark:text-accent-400 text-sm text-center max-w-sm"
-    >
+    <p class="max-w-sm text-center text-sm text-accent-500 dark:text-accent-400">
       {{ t('onboarding.subtitle') }}
     </p>
 
     <div class="w-full max-w-sm space-y-3">
       <!-- Primary: GPS -->
-      <BaseButton
-        class="w-full"
-        size="md"
-        :disabled="geoLoading"
-        @click="locate"
-      >
+      <BaseButton class="w-full" size="md" :disabled="geoLoading" @click="locate">
         <SpinnerIcon v-if="geoLoading" size="sm" class="mr-1" />
         {{ geoLoading ? t('onboarding.locating') : t('onboarding.useGps') }}
       </BaseButton>
-      <div v-if="geoError" class="text-red-400 text-xs text-center">
+      <div v-if="geoError" class="text-center text-xs text-red-400">
         {{ geoError }}
       </div>
 
       <!-- Separator -->
       <div
-        class="flex items-center gap-3 text-accent-300 dark:text-accent-600 text-[11px] uppercase tracking-widest"
+        class="flex items-center gap-3 text-[11px] tracking-widest text-accent-300 uppercase dark:text-accent-600"
       >
-        <span class="flex-1 h-px bg-accent-100 dark:bg-accent-900" />
+        <span class="h-px flex-1 bg-accent-100 dark:bg-accent-900" />
         {{ t('onboarding.or') }}
-        <span class="flex-1 h-px bg-accent-100 dark:bg-accent-900" />
+        <span class="h-px flex-1 bg-accent-100 dark:bg-accent-900" />
       </div>
 
       <!-- Secondary: manual input -->
@@ -59,9 +52,9 @@
         {{ t('onboarding.confirmLocation') }}
       </BaseButton>
 
-      <details class="text-accent-300 dark:text-accent-600 text-[11px]">
+      <details class="text-[11px] text-accent-300 dark:text-accent-600">
         <summary
-          class="cursor-pointer hover:text-accent-600 dark:hover:text-accent-400 transition-colors tracking-widest text-center"
+          class="cursor-pointer text-center tracking-widest transition-colors hover:text-accent-600 dark:hover:text-accent-400"
         >
           {{ t('onboarding.supportedFormats') }}
         </summary>
@@ -71,7 +64,7 @@
       </details>
     </div>
 
-    <div class="flex items-center gap-2 mt-4">
+    <div class="mt-4 flex items-center gap-2">
       <LanguageSwitcher /> <span>-</span> <ThemeSwitcher />
     </div>
 
@@ -83,14 +76,15 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import BaseButton from './BaseButton.vue';
-import BaseInput from './BaseInput.vue';
-import SpinnerIcon from './SpinnerIcon.vue';
+
 import { useGeolocation } from '../composables/useGeolocation';
 import { useProfileStore } from '../stores/profile';
 import { parseLocation, LOCATION_FORMATS } from '../utils/parseLocation';
 import AppFooter from './AppFooter.vue';
+import BaseButton from './BaseButton.vue';
+import BaseInput from './BaseInput.vue';
 import LanguageSwitcher from './LanguageSwitcher.vue';
+import SpinnerIcon from './SpinnerIcon.vue';
 import ThemeSwitcher from './ThemeSwitcher.vue';
 
 const { t } = useI18n();

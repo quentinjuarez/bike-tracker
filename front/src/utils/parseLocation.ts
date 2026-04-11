@@ -55,12 +55,7 @@ function clamp(lat: number, lng: number): LatLng | null {
 /**
  * Convert DMS (degrees, minutes, seconds) to decimal degrees.
  */
-function dmsToDecimal(
-  deg: number,
-  min: number,
-  sec: number,
-  direction: string,
-): number {
+function dmsToDecimal(deg: number, min: number, sec: number, direction: string): number {
   const sign = /[SWsw]/.test(direction) ? -1 : 1;
   return sign * (Math.abs(deg) + min / 60 + sec / 3600);
 }
@@ -87,9 +82,7 @@ function tryGoogleMapsUrl(input: string): LatLng | null {
   }
 
   // Pattern 2: ?q=lat,lng  or &q=lat,lng or ?ll=lat,lng
-  const qMatch = input.match(
-    /[?&](?:q|ll|query|center)=(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/,
-  );
+  const qMatch = input.match(/[?&](?:q|ll|query|center)=(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
   if (qMatch && qMatch[1] && qMatch[2]) {
     return clamp(parseFloat(qMatch[1]), parseFloat(qMatch[2]));
   }
@@ -117,18 +110,8 @@ function tryDms(input: string): LatLng | null {
   if (m && m[2] && m[3] && m[4] && m[7] && m[8] && m[9]) {
     const latDir = m[1] || m[5] || 'N';
     const lngDir = m[6] || m[10] || 'E';
-    const lat = dmsToDecimal(
-      parseFloat(m[2]),
-      parseFloat(m[3]),
-      parseFloat(m[4]),
-      latDir,
-    );
-    const lng = dmsToDecimal(
-      parseFloat(m[7]),
-      parseFloat(m[8]),
-      parseFloat(m[9]),
-      lngDir,
-    );
+    const lat = dmsToDecimal(parseFloat(m[2]), parseFloat(m[3]), parseFloat(m[4]), latDir);
+    const lng = dmsToDecimal(parseFloat(m[7]), parseFloat(m[8]), parseFloat(m[9]), lngDir);
     return clamp(lat, lng);
   }
 
@@ -143,18 +126,8 @@ function tryDms(input: string): LatLng | null {
   if (s && s[2] && s[3] && s[4] && s[7] && s[8] && s[9]) {
     const latDir = s[1] || s[5] || 'N';
     const lngDir = s[6] || s[10] || 'E';
-    const lat = dmsToDecimal(
-      parseFloat(s[2]),
-      parseFloat(s[3]),
-      parseFloat(s[4]),
-      latDir,
-    );
-    const lng = dmsToDecimal(
-      parseFloat(s[7]),
-      parseFloat(s[8]),
-      parseFloat(s[9]),
-      lngDir,
-    );
+    const lat = dmsToDecimal(parseFloat(s[2]), parseFloat(s[3]), parseFloat(s[4]), latDir);
+    const lng = dmsToDecimal(parseFloat(s[7]), parseFloat(s[8]), parseFloat(s[9]), lngDir);
     return clamp(lat, lng);
   }
 

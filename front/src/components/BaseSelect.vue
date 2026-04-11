@@ -1,8 +1,8 @@
 <template>
   <div
-    class="w-full bg-accent-50 dark:bg-accent-950/40 border border-accent-200 dark:border-accent-700 text-accent-700 dark:text-accent-300 text-sm pr-2 font-mono rounded-xl focus-within:border-accent-300 dark:focus-within:border-accent-600 cursor-pointer transition-colors"
+    class="w-full cursor-pointer rounded-xl border border-accent-200 bg-accent-50 pr-2 font-mono text-sm text-accent-700 transition-colors focus-within:border-accent-300 dark:border-accent-700 dark:bg-accent-950/40 dark:text-accent-300 dark:focus-within:border-accent-600"
   >
-    <select v-model="model" class="w-full h-full px-3 py-2">
+    <select v-model="model" class="h-full w-full px-3 py-2">
       <slot />
     </select>
   </div>

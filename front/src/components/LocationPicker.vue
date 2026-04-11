@@ -5,10 +5,10 @@
       <SpinnerIcon v-if="geoLoading" size="sm" class="mr-1" />
       {{ geoLoading ? 'Locating…' : 'Use my GPS location' }}
     </BaseButton>
-    <div v-if="geoError" class="text-red-400 text-xs">{{ geoError }}</div>
+    <div v-if="geoError" class="text-xs text-red-400">{{ geoError }}</div>
 
     <div
-      class="text-accent-300 dark:text-accent-600 text-[11px] text-center uppercase tracking-widest"
+      class="text-center text-[11px] tracking-widest text-accent-300 uppercase dark:text-accent-600"
     >
       or
     </div>
@@ -27,17 +27,12 @@
     <div v-else-if="locationRaw && !parsed" class="text-xs text-red-400">
       Could not parse location
     </div>
-    <BaseButton
-      class="w-full"
-      size="sm"
-      :disabled="!parsed"
-      @click="submitCustom"
-    >
+    <BaseButton class="w-full" size="sm" :disabled="!parsed" @click="submitCustom">
       Confirm location
     </BaseButton>
-    <details class="text-accent-300 dark:text-accent-600 text-[11px]">
+    <details class="text-[11px] text-accent-300 dark:text-accent-600">
       <summary
-        class="cursor-pointer hover:text-accent-600 dark:hover:text-accent-400 transition-colors tracking-widest"
+        class="cursor-pointer tracking-widest transition-colors hover:text-accent-600 dark:hover:text-accent-400"
       >
         Supported formats
       </summary>
@@ -50,12 +45,13 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import SpinnerIcon from './SpinnerIcon.vue';
+
+import { useGeolocation } from '../composables/useGeolocation';
+import { useProfileStore } from '../stores/profile';
+import { parseLocation, LOCATION_FORMATS } from '../utils/parseLocation';
 import BaseButton from './BaseButton.vue';
 import BaseInput from './BaseInput.vue';
-import { useProfileStore } from '../stores/profile';
-import { useGeolocation } from '../composables/useGeolocation';
-import { parseLocation, LOCATION_FORMATS } from '../utils/parseLocation';
+import SpinnerIcon from './SpinnerIcon.vue';
 
 const props = defineProps<{ isOnboarding?: boolean }>();
 const emit = defineEmits<{ done: [] }>();
@@ -70,12 +66,7 @@ const parsed = computed(() => parseLocation(locationRaw.value));
 watch(
   () => [store.lat, store.lng] as const,
   ([lat, lng], [oldLat, oldLng]) => {
-    if (
-      !props.isOnboarding &&
-      lat != null &&
-      lng != null &&
-      (lat !== oldLat || lng !== oldLng)
-    ) {
+    if (!props.isOnboarding && lat != null && lng != null && (lat !== oldLat || lng !== oldLng)) {
       emit('done');
     }
   },

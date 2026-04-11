@@ -1,7 +1,10 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue';
+
 import { useProfileStore } from '../stores/profile';
 import {
   type Bike,
+  type GbfsBike,
+  type GbfsResponse,
   type VelibStation,
   type MapEntity,
   type Provider,
@@ -9,15 +12,26 @@ import {
   UNSET,
 } from '../types';
 
+interface RawVelibStation {
+  station_id: string;
+  stationCode?: string;
+  name: string | null;
+  lat: number;
+  lon: number;
+  capacity: number | null;
+  num_bikes_available?: number;
+  mechanical?: number;
+  ebike?: number;
+  num_docks_available?: number;
+  is_installed?: number;
+  is_renting?: number;
+  is_returning?: number;
+}
+
 // Re-export for convenience
 export type { Bike, VelibStation, MapEntity, Provider } from '../types';
 
-export function haversineDistance(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-) {
+export function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371e3;
   const toRad = (n: number) => (n * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
@@ -49,9 +63,9 @@ export function useBikes(opts?: { proxyBase?: string }) {
   ): Promise<Bike[]> {
     const res = await fetch(`${proxyBase}/${provider}/free_bike_status`);
     if (!res.ok) throw new Error(`${provider} fetch failed: ${res.status}`);
-    const json = await res.json();
+    const json = (await res.json()) as GbfsResponse;
 
-    return (json.data?.bikes || []).map((b: any) => {
+    return (json.data?.bikes || []).map((b: GbfsBike) => {
       const lat = Number(b.lat);
       const lon = Number(b.lon);
       const distance = haversineDistance(userLat, userLng, lat, lon);
@@ -59,17 +73,12 @@ export function useBikes(opts?: { proxyBase?: string }) {
       const vtInfo = vtId ? VEHICLE_TYPES[vtId] : undefined;
       const max_range_meters = vtInfo?.max_range_meters;
       const current_range_meters =
-        b.current_range_meters != null
-          ? Number(b.current_range_meters)
-          : undefined;
+        b.current_range_meters != null ? Number(b.current_range_meters) : undefined;
       const battery_percent =
         b.current_fuel_percent != null
           ? Math.min(100, Math.round(Number(b.current_fuel_percent) * 100))
           : current_range_meters != null && max_range_meters
-            ? Math.min(
-                100,
-                Math.round((current_range_meters / max_range_meters) * 100),
-              )
+            ? Math.min(100, Math.round((current_range_meters / max_range_meters) * 100))
             : undefined;
       return {
         kind: 'bike',
@@ -89,15 +98,12 @@ export function useBikes(opts?: { proxyBase?: string }) {
     });
   }
 
-  async function fetchVelib(
-    userLat: number,
-    userLng: number,
-  ): Promise<VelibStation[]> {
+  async function fetchVelib(userLat: number, userLng: number): Promise<VelibStation[]> {
     const res = await fetch(`${proxyBase}/velib/stations`);
     if (!res.ok) throw new Error(`velib fetch failed: ${res.status}`);
-    const json = await res.json();
+    const json = (await res.json()) as { stations: RawVelibStation[] };
 
-    return (json.stations || []).map((s: any) => {
+    return (json.stations || []).map((s: RawVelibStation) => {
       const lat = Number(s.lat);
       const lon = Number(s.lon);
       const distance = haversineDistance(userLat, userLng, lat, lon);
@@ -133,9 +139,10 @@ export function useBikes(opts?: { proxyBase?: string }) {
     error.value = null;
     try {
       // Split bike providers from velib
-      const bikeProviders = store.providers.filter(
-        (p) => p !== 'velib',
-      ) as Exclude<Provider, 'velib'>[];
+      const bikeProviders = store.providers.filter((p) => p !== 'velib') as Exclude<
+        Provider,
+        'velib'
+      >[];
       const includeVelib = store.providers.includes('velib');
 
       const results = await Promise.allSettled([
@@ -145,10 +152,7 @@ export function useBikes(opts?: { proxyBase?: string }) {
 
       const all: MapEntity[] = [];
       const errors: string[] = [];
-      const allProviders = [
-        ...bikeProviders,
-        ...(includeVelib ? ['velib' as const] : []),
-      ];
+      const allProviders = [...bikeProviders, ...(includeVelib ? ['velib' as const] : [])];
 
       for (const [i, result] of results.entries()) {
         if (result.status === 'fulfilled') {
@@ -156,9 +160,7 @@ export function useBikes(opts?: { proxyBase?: string }) {
             all.push(entity);
           }
         } else {
-          errors.push(
-            `${allProviders[i]}: ${result.reason?.message ?? result.reason}`,
-          );
+          errors.push(`${allProviders[i]}: ${result.reason?.message ?? result.reason}`);
         }
       }
 
@@ -169,14 +171,8 @@ export function useBikes(opts?: { proxyBase?: string }) {
       let filtered = all;
 
       // Max distance filter – only meaningful when the user has a real position
-      if (
-        store.hasPosition &&
-        store.maxDistance !== UNSET &&
-        store.maxDistance > 0
-      ) {
-        filtered = filtered.filter(
-          (e) => e.distance != null && e.distance <= store.maxDistance,
-        );
+      if (store.hasPosition && store.maxDistance !== UNSET && store.maxDistance > 0) {
+        filtered = filtered.filter((e) => e.distance != null && e.distance <= store.maxDistance);
       }
 
       // Min battery filter (-1 = any), only applies to bikes (stations always pass)
@@ -184,17 +180,13 @@ export function useBikes(opts?: { proxyBase?: string }) {
         filtered = filtered.filter(
           (e) =>
             e.kind === 'station' ||
-            (e.battery_percent != null &&
-              e.battery_percent >= store.minBattery),
+            (e.battery_percent != null && e.battery_percent >= store.minBattery),
         );
       }
 
-      bikes.value = filtered.sort(
-        (a, b) => (a.distance ?? 0) - (b.distance ?? 0),
-      );
-    } catch (err: any) {
-      console.error(err);
-      error.value = err?.message ?? String(err);
+      bikes.value = filtered.sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : String(err);
     } finally {
       loading.value = false;
     }

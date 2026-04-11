@@ -102,6 +102,7 @@ export interface GbfsBike {
   is_reserved: boolean;
   is_disabled: boolean;
   current_range_meters?: number;
+  current_fuel_percent?: number;
   vehicle_type_id?: string;
   last_reported?: number;
 }

@@ -1,4 +1,5 @@
 import { createI18n } from 'vue-i18n';
+
 import en from './locales/en';
 import fr from './locales/fr';
 
@@ -10,10 +11,7 @@ function detectLocale(): Locale {
   if (saved && SUPPORTED_LOCALES.includes(saved)) return saved;
 
   // Probe browser/system language
-  const candidates = [
-    ...(navigator.languages ?? []),
-    navigator.language,
-  ].filter(Boolean);
+  const candidates = [...(navigator.languages ?? []), navigator.language].filter(Boolean);
 
   for (const lang of candidates) {
     if (lang.startsWith('fr')) return 'fr';

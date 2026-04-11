@@ -15,8 +15,9 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import BaseButton from './BaseButton.vue';
+
 import { setLocale, SUPPORTED_LOCALES, type Locale } from '../i18n';
+import BaseButton from './BaseButton.vue';
 
 withDefaults(defineProps<{ size?: 'sm' | 'md' }>(), { size: 'sm' });
 

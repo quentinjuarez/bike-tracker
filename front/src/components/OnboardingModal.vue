@@ -1,32 +1,30 @@
 <template>
   <Teleport to="body">
     <div
-      class="fixed inset-0 z-3000 bg-black/40 backdrop-blur-sm flex items-end justify-center sm:items-center p-4"
+      class="fixed inset-0 z-3000 flex items-end justify-center bg-black/40 p-4 backdrop-blur-sm sm:items-center"
       @click.self="emit('close')"
     >
       <div
-        class="bg-white dark:bg-[#111118] rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-accent-100 dark:border-accent-900 space-y-5"
+        class="w-full max-w-sm space-y-5 rounded-2xl border border-accent-100 bg-white p-6 shadow-2xl dark:border-accent-900 dark:bg-[#111118]"
       >
         <!-- Header -->
         <div class="flex items-start justify-between gap-4">
           <div>
-            <h2
-              class="text-base font-semibold tracking-wide text-accent-800 dark:text-accent-100"
-            >
+            <h2 class="text-base font-semibold tracking-wide text-accent-800 dark:text-accent-100">
               {{ t('onboardingModal.title') }}
             </h2>
-            <p class="text-xs text-accent-500 dark:text-accent-400 mt-1">
+            <p class="mt-1 text-xs text-accent-500 dark:text-accent-400">
               {{ t('onboardingModal.subtitle') }}
             </p>
           </div>
           <button
-            class="text-accent-400 hover:text-accent-600 dark:hover:text-accent-200 transition-colors mt-0.5 flex-none"
+            class="mt-0.5 flex-none text-accent-400 transition-colors hover:text-accent-600 dark:hover:text-accent-200"
             :aria-label="t('onboardingModal.close')"
             @click="emit('close')"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4"
+              class="h-4 w-4"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -44,13 +42,11 @@
         <ul class="space-y-3">
           <li v-for="tip in tips" :key="tip.key" class="flex items-start gap-3">
             <span
-              class="text-base leading-none mt-0.5 flex-none w-5 text-center"
+              class="mt-0.5 w-5 flex-none text-center text-base leading-none"
               aria-hidden="true"
               >{{ tip.icon }}</span
             >
-            <span
-              class="text-sm text-accent-700 dark:text-accent-300 leading-snug"
-            >
+            <span class="text-sm leading-snug text-accent-700 dark:text-accent-300">
               {{ t(tip.key) }}
             </span>
           </li>
@@ -67,6 +63,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
+
 import BaseButton from './BaseButton.vue';
 
 const emit = defineEmits<{ close: [] }>();
