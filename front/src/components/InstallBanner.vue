@@ -73,6 +73,7 @@ import { useI18n } from 'vue-i18n';
 
 import BaseButton from './BaseButton.vue';
 import { useAppStore } from '../stores/app';
+import type { BeforeInstallPromptEvent } from '../types';
 
 const { t } = useI18n();
 const appStore = useAppStore();

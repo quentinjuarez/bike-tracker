@@ -95,3 +95,14 @@ export function createDefaultState(): ProfileState {
     pollInterval: FILTER_BOUNDS.pollInterval.default,
   };
 }
+
+// ── Other types ─────────────────────────────────────────────────────
+
+export interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
