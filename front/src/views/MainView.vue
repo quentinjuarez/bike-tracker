@@ -48,18 +48,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import BaseButton from '../components/BaseButton.vue';
 import BikeList from '../components/BikeList.vue';
-import InstallBanner from '../components/InstallBanner.vue';
 import BikeMap from '../components/BikeMap.vue';
 import GeoWidget from '../components/GeoWidget.vue';
+import InstallBanner from '../components/InstallBanner.vue';
 import OnboardingModal from '../components/OnboardingModal.vue';
 import SettingsPanel from '../components/SettingsPanel.vue';
 import SpinnerIcon from '../components/SpinnerIcon.vue';
 import { useBikes } from '../composables/useBikes';
+import { useGeolocation } from '../composables/useGeolocation';
 import { applyQueryParams } from '../composables/useQueryParams';
 import { useAppStore } from '../stores/app';
 import { useProfileStore } from '../stores/profile';
@@ -68,6 +69,7 @@ import { ALL_PROVIDERS, FILTER_BOUNDS, UNSET } from '../types';
 const store = useProfileStore();
 const appStore = useAppStore();
 const { t } = useI18n();
+const { locate } = useGeolocation();
 
 const showList = ref(false);
 const showSettings = ref(false);
@@ -78,6 +80,12 @@ function dismissOnboarding() {
   appStore.onboardingSeen = true;
 }
 
+function onVisibilityChange() {
+  if (document.visibilityState === 'visible' && store.locationMode === 'geo') {
+    locate();
+  }
+}
+
 onMounted(() => {
   // Query params take priority (shared link / embed-like usage on main view)
   applyQueryParams(window.location.search);
@@ -85,6 +93,13 @@ onMounted(() => {
   if (!appStore.onboardingSeen) {
     showOnboarding.value = true;
   }
+
+  // Re-fetch GPS when the tab becomes visible again (e.g. switching back on mobile)
+  document.addEventListener('visibilitychange', onVisibilityChange);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', onVisibilityChange);
 });
 
 // Keep URL in sync with the store.
@@ -116,7 +131,11 @@ watch(
       params.set('minBat', (state.minBattery === UNSET ? 0 : state.minBattery).toString());
 
     const qs = params.toString();
-    window.history.replaceState({}, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+    window.history.replaceState(
+      {},
+      '',
+      qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
+    );
   },
 );
 

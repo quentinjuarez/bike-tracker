@@ -157,8 +157,14 @@ export function useBikes(opts?: { proxyBase?: string }) {
   // ── Scheduling ───────────────────────────────────────────────────────
 
   function clearTimers() {
-    if (fetchTimer) { clearTimeout(fetchTimer); fetchTimer = null; }
-    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+    if (fetchTimer) {
+      clearTimeout(fetchTimer);
+      fetchTimer = null;
+    }
+    if (countdownTimer) {
+      clearInterval(countdownTimer);
+      countdownTimer = null;
+    }
     // Do NOT update nextRefresh here — avoid synchronous reactive mutations
     // inside watcher callbacks which can conflict with mid-mount component updates
   }
@@ -214,10 +220,14 @@ export function useBikes(opts?: { proxyBase?: string }) {
   // Reschedule (no immediate fetch) when poll interval changes
   watch(
     () => store.pollInterval,
-    () => { scheduleNext(); },
+    () => {
+      scheduleNext();
+    },
   );
 
-  onMounted(() => { refresh(); });
+  onMounted(() => {
+    refresh();
+  });
 
   onUnmounted(() => {
     clearTimers();

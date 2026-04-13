@@ -17,18 +17,11 @@
           <div class="mb-4 flex items-center justify-between">
             <h2 class="text-base font-semibold tracking-wide">
               {{ t('bikeList.title') }}
-              <span
-                class="ml-2 text-sm font-normal text-accent-400 dark:text-accent-500"
-              >
+              <span class="ml-2 text-sm font-normal text-accent-400 dark:text-accent-500">
                 {{ bikes.length }}
               </span>
             </h2>
-            <BaseButton
-              variant="ghost"
-              size="sm"
-              class="px-2!"
-              @click="emit('close')"
-            >
+            <BaseButton variant="ghost" size="sm" class="px-2!" @click="emit('close')">
               ✕
             </BaseButton>
           </div>
@@ -44,11 +37,7 @@
         </div>
 
         <!-- Virtual scroll viewport -->
-        <div
-          ref="scrollEl"
-          class="flex-1 overflow-y-auto"
-          @scroll.passive="onScroll"
-        >
+        <div ref="scrollEl" class="flex-1 overflow-y-auto" @scroll.passive="onScroll">
           <!-- Empty state -->
           <div
             v-if="!bikes.length"
@@ -58,10 +47,7 @@
           </div>
 
           <!-- Virtual spacer -->
-          <div
-            v-else
-            :style="{ height: totalHeight + 'px', position: 'relative' }"
-          >
+          <div v-else :style="{ height: totalHeight + 'px', position: 'relative' }">
             <div
               :style="{
                 position: 'absolute',
@@ -99,11 +85,7 @@
                   class="text-right font-mono text-sm font-bold"
                   :class="batteryColor(entity.battery_percent ?? undefined)"
                 >
-                  {{
-                    entity.battery_percent != null
-                      ? `${entity.battery_percent}%`
-                      : '---'
-                  }}
+                  {{ entity.battery_percent != null ? `${entity.battery_percent}%` : '---' }}
                 </span>
                 <span
                   v-else
@@ -114,9 +96,7 @@
                 </span>
 
                 <!-- Distance -->
-                <span
-                  class="text-right font-mono text-sm text-accent-600 dark:text-accent-400"
-                >
+                <span class="text-right font-mono text-sm text-accent-600 dark:text-accent-400">
                   {{ formatDistance(entity.distance) }}
                 </span>
               </div>
@@ -181,21 +161,16 @@ function onScroll() {
   scrollTop.value = scrollEl.value?.scrollTop ?? 0;
 }
 
-const startIndex = computed(() =>
-  Math.max(0, Math.floor(scrollTop.value / ROW_HEIGHT) - OVERSCAN),
-);
+const startIndex = computed(() => Math.max(0, Math.floor(scrollTop.value / ROW_HEIGHT) - OVERSCAN));
 
 const endIndex = computed(() =>
   Math.min(
     props.bikes.length,
-    Math.ceil((scrollTop.value + containerHeight.value) / ROW_HEIGHT) +
-      OVERSCAN,
+    Math.ceil((scrollTop.value + containerHeight.value) / ROW_HEIGHT) + OVERSCAN,
   ),
 );
 
-const visibleItems = computed(() =>
-  props.bikes.slice(startIndex.value, endIndex.value),
-);
+const visibleItems = computed(() => props.bikes.slice(startIndex.value, endIndex.value));
 
 const totalHeight = computed(() => props.bikes.length * ROW_HEIGHT);
 const offsetY = computed(() => startIndex.value * ROW_HEIGHT);

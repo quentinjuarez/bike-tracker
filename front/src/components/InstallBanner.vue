@@ -18,14 +18,10 @@
           <div class="flex items-start gap-3">
             <!-- Text -->
             <div class="min-w-0 flex-1">
-              <p
-                class="text-sm font-semibold text-accent-800 dark:text-accent-100"
-              >
+              <p class="text-sm font-semibold text-accent-800 dark:text-accent-100">
                 {{ t('install.title') }}
               </p>
-              <p
-                class="mt-0.5 text-xs leading-snug text-accent-500 dark:text-accent-400"
-              >
+              <p class="mt-0.5 text-xs leading-snug text-accent-500 dark:text-accent-400">
                 {{ isIos ? t('install.iosHint') : t('install.subtitle') }}
               </p>
             </div>
@@ -53,12 +49,7 @@
           </div>
 
           <!-- Install button — only for browsers that support the prompt -->
-          <BaseButton
-            v-if="canPrompt"
-            class="mt-3 w-full"
-            size="sm"
-            @click="install"
-          >
+          <BaseButton v-if="canPrompt" class="mt-3 w-full" size="sm" @click="install">
             {{ t('install.install') }}
           </BaseButton>
         </div>
@@ -71,9 +62,9 @@
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import BaseButton from './BaseButton.vue';
 import { useAppStore } from '../stores/app';
 import type { BeforeInstallPromptEvent } from '../types';
+import BaseButton from './BaseButton.vue';
 
 const { t } = useI18n();
 const appStore = useAppStore();
@@ -89,15 +80,11 @@ const isIos = computed(() => /iphone|ipad|ipod/i.test(navigator.userAgent));
 const isStandalone = computed(
   () =>
     window.matchMedia('(display-mode: standalone)').matches ||
-    ('standalone' in navigator &&
-      (navigator as Navigator & { standalone: boolean }).standalone),
+    ('standalone' in navigator && (navigator as Navigator & { standalone: boolean }).standalone),
 );
 
 const visible = computed(
-  () =>
-    !appStore.installDismissed &&
-    !isStandalone.value &&
-    (canPrompt.value || isIos.value),
+  () => !appStore.installDismissed && !isStandalone.value && (canPrompt.value || isIos.value),
 );
 
 function dismiss() {

@@ -23,9 +23,7 @@
         :lat-lng="[props.userLat, props.userLng]"
         :icon="userMarkerIcon"
       >
-        <l-tooltip
-          :options="{ permanent: false, sticky: true, interactive: false }"
-        >
+        <l-tooltip :options="{ permanent: false, sticky: true, interactive: false }">
           {{ t('bikeMap.me') }}
         </l-tooltip>
       </l-marker>
@@ -35,9 +33,7 @@
       class="absolute bottom-4 left-4 z-1000 space-y-1 rounded-xl bg-accent-500/5 px-3 py-2 text-xs text-accent-600 shadow-sm backdrop-blur-sm dark:bg-black/10 dark:text-accent-400"
     >
       <div class="flex items-center gap-2">
-        <span
-          class="inline-block h-3 w-3 rounded-full bg-accent-500 dark:bg-accent-400"
-        ></span>
+        <span class="inline-block h-3 w-3 rounded-full bg-accent-500 dark:bg-accent-400"></span>
         {{ t('bikeMap.me') }}
       </div>
       <div class="flex items-center gap-2">
@@ -67,12 +63,7 @@ import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import 'leaflet/dist/leaflet.css';
-import type {
-  Bike,
-  VelibStation,
-  MapEntity,
-  Provider,
-} from '../composables/useBikes';
+import type { Bike, VelibStation, MapEntity, Provider } from '../composables/useBikes';
 import { useTheme } from '../composables/useTheme';
 
 const props = defineProps<{
@@ -86,13 +77,10 @@ const { t } = useI18n();
 
 // ── Tile config ─────────────────────────────────────────────────────
 
-const TILE_DARK =
-  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const TILE_DARK = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 const TILE_LIGHT =
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
-const tileUrl = computed(() =>
-  theme.value === 'light' ? TILE_LIGHT : TILE_DARK,
-);
+const tileUrl = computed(() => (theme.value === 'light' ? TILE_LIGHT : TILE_DARK));
 const tileAttribution = computed(() =>
   theme.value === 'light'
     ? 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community'
@@ -117,15 +105,10 @@ let markersLayer: L.LayerGroup | null = null;
 let boundsTimer: ReturnType<typeof setTimeout> | null = null;
 
 // Reactive bounds: plain serialisable data, safe to be reactive
-const mapBounds = ref<{ n: number; s: number; e: number; w: number } | null>(
-  null,
-);
+const mapBounds = ref<{ n: number; s: number; e: number; w: number } | null>(null);
 
 // Diff tracking — plain Map, not reactive
-const activeMarkers = new Map<
-  string,
-  { marker: L.Marker; entity: MapEntity }
->();
+const activeMarkers = new Map<string, { marker: L.Marker; entity: MapEntity }>();
 
 onMounted(() => {
   nextTick(() => {
@@ -213,15 +196,12 @@ watch(
 // ── Bounds-filtered entities ─────────────────────────────────────────
 
 function entityKey(e: MapEntity): string {
-  return e.kind === 'bike'
-    ? `b-${e.provider}-${e.bike_id}`
-    : `s-${e.station_id}`;
+  return e.kind === 'bike' ? `b-${e.provider}-${e.bike_id}` : `s-${e.station_id}`;
 }
 
 function entitiesEqual(a: MapEntity, b: MapEntity): boolean {
   if (a.lat !== b.lat || a.lon !== b.lon) return false;
-  if (a.kind === 'bike' && b.kind === 'bike')
-    return a.battery_percent === b.battery_percent;
+  if (a.kind === 'bike' && b.kind === 'bike') return a.battery_percent === b.battery_percent;
   if (a.kind === 'station' && b.kind === 'station')
     return (
       a.num_bikes_available === b.num_bikes_available &&
@@ -234,9 +214,7 @@ function entitiesEqual(a: MapEntity, b: MapEntity): boolean {
 const displayEntities = computed<MapEntity[]>(() => {
   if (!mapBounds.value) return [];
   const { n, s, e, w } = mapBounds.value;
-  return props.bikes.filter(
-    (b) => b.lat >= s && b.lat <= n && b.lon >= w && b.lon <= e,
-  );
+  return props.bikes.filter((b) => b.lat >= s && b.lat <= n && b.lon >= w && b.lon <= e);
 });
 
 // ── Icons ────────────────────────────────────────────────────────────
@@ -334,11 +312,7 @@ function bikeIcon(bike: Bike, isDark: boolean, animate = false): L.Icon {
   });
 }
 
-function stationIcon(
-  station: VelibStation,
-  isDark: boolean,
-  animate = false,
-): L.Icon {
+function stationIcon(station: VelibStation, isDark: boolean, animate = false): L.Icon {
   const count = station.num_bikes_available;
   const eBikes = station.ebike || 0;
   const mechBikes = station.mechanical || 0;
@@ -382,8 +356,7 @@ function formatDistance(m?: number) {
 
 function tooltipHtml(entity: MapEntity): string {
   if (entity.kind === 'bike') {
-    const batt =
-      entity.battery_percent != null ? `<br>${entity.battery_percent}%` : '';
+    const batt = entity.battery_percent != null ? `<br>${entity.battery_percent}%` : '';
     return `<strong class="uppercase">${entity.provider}</strong><br>${formatDistance(entity.distance)}${batt}`;
   }
   return [
@@ -405,13 +378,10 @@ function addMarker(entity: MapEntity, isDark: boolean, animate = false) {
     entity.kind === 'bike'
       ? bikeIcon(entity, isDark, animate)
       : stationIcon(entity, isDark, animate);
-  const marker = L.marker([entity.lat, entity.lon], { icon }).bindTooltip(
-    tooltipHtml(entity),
-    {
-      sticky: true,
-      interactive: false,
-    },
-  );
+  const marker = L.marker([entity.lat, entity.lon], { icon }).bindTooltip(tooltipHtml(entity), {
+    sticky: true,
+    interactive: false,
+  });
   markersLayer.addLayer(marker);
   activeMarkers.set(entityKey(entity), { marker, entity });
 }
@@ -465,16 +435,11 @@ watch(displayEntities, (entities) => {
       addMarker(entity, isDark, true);
     } else if (!entitiesEqual(existing.entity, entity)) {
       // Data changed — update in place without destroying the marker
-      if (
-        existing.entity.lat !== entity.lat ||
-        existing.entity.lon !== entity.lon
-      ) {
+      if (existing.entity.lat !== entity.lat || existing.entity.lon !== entity.lon) {
         existing.marker.setLatLng([entity.lat, entity.lon]);
       }
       existing.marker.setIcon(
-        entity.kind === 'bike'
-          ? bikeIcon(entity, isDark)
-          : stationIcon(entity, isDark),
+        entity.kind === 'bike' ? bikeIcon(entity, isDark) : stationIcon(entity, isDark),
       );
       existing.marker.setTooltipContent(tooltipHtml(entity));
       activeMarkers.set(key, { marker: existing.marker, entity });
@@ -489,9 +454,7 @@ watch(
     const isDark = theme.value === 'dark';
     for (const [, { marker, entity }] of activeMarkers) {
       marker.setIcon(
-        entity.kind === 'bike'
-          ? bikeIcon(entity, isDark)
-          : stationIcon(entity, isDark),
+        entity.kind === 'bike' ? bikeIcon(entity, isDark) : stationIcon(entity, isDark),
       );
     }
   },

@@ -14,6 +14,7 @@ useTheme();
 // doesn't blank out. Errors are suppressed after logging; the next
 // reactive tick will produce a clean render.
 onErrorCaptured((err, _instance, info) => {
+  // eslint-disable-next-line no-console
   console.warn('[App] caught Vue error:', info, err);
   return false; // prevent propagation to window.onerror
 });
