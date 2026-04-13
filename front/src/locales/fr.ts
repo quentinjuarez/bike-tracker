@@ -12,10 +12,13 @@ export default {
     subtitle: 'Accès instantané depuis votre écran d’accueil',
     install: 'Installer',
     later: 'Plus tard',
+    iosHint:
+      'Sur iOS, utilisez le bouton de partage de votre navigateur puis « Ajouter à l’écran d’accueil »',
   },
   onboardingModal: {
     title: 'Bienvenue sur Bike Tracker',
-    subtitle: 'Tous les opérateurs parisiens sur une seule carte en temps réel.',
+    subtitle:
+      'Tous les opérateurs parisiens sur une seule carte en temps réel.',
     tip1: 'La carte affiche tous les véhicules Lime, Voi, Dott et Vélib disponibles, mis à jour en temps réel.',
     tip2: 'Appuyez sur \u00ab\u00a0Me localiser\u00a0\u00bb pour centrer la carte sur votre position et afficher les distances.',
     tip3: 'Appuyez sur un marqueur pour voir la batterie, la distance et les détails du véhicule.',
@@ -164,7 +167,8 @@ export default {
     placeholder: '48.8566, 2.3522 ou lien Google Maps…',
     cannotParse: 'Impossible de lire cette position',
     confirm: 'Valider',
-    helperText: 'Collez des coordonnées (48.8566, 2.3522) ou un lien Google Maps.',
+    helperText:
+      'Collez des coordonnées (48.8566, 2.3522) ou un lien Google Maps.',
   },
   settings: {
     title: 'Paramètres',

@@ -6,13 +6,11 @@
       >
         <!-- Text -->
         <div class="min-w-0 flex-1">
-          <p
-            class="truncate text-xs font-semibold tracking-wide text-accent-700 dark:text-accent-300"
-          >
+          <p class="truncate text-xs font-semibold tracking-wide text-accent-700 dark:text-accent-300">
             {{ t('install.title') }}
           </p>
           <p class="mt-0.5 text-[10px] leading-tight text-accent-400 dark:text-accent-500">
-            {{ t('install.subtitle') }}
+            {{ isIOS ? t('install.iosHint') : t('install.subtitle') }}
           </p>
         </div>
 
@@ -22,12 +20,18 @@
             variant="ghost"
             size="sm"
             class="w-full uppercase md:w-auto"
-            @click="onDismiss"
+            @click="dismiss"
           >
             {{ t('install.later') }}
           </BaseButton>
 
-          <BaseButton size="sm" class="w-full uppercase md:w-auto" @click="onInstall">
+          <!-- iOS: no programmatic install — button just dismisses after reading hint -->
+          <BaseButton
+            v-if="!isIOS"
+            size="sm"
+            class="w-full uppercase md:w-auto"
+            @click="onInstall"
+          >
             {{ t('install.install') }}
           </BaseButton>
         </div>
@@ -43,15 +47,10 @@ import { useInstallPrompt } from '../composables/useInstallPrompt';
 import BaseButton from './BaseButton.vue';
 
 const { t } = useI18n();
-const { showBanner, triggerInstall, dismiss } = useInstallPrompt();
+const { showBanner, isIOS, triggerInstall, dismiss } = useInstallPrompt();
 
 function onInstall() {
   triggerInstall();
-}
-
-function onDismiss() {
-  showBanner.value = false;
-  dismiss();
 }
 </script>
 

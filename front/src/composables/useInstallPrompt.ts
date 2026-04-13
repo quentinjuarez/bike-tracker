@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, watch } from 'vue';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -7,52 +7,66 @@ interface BeforeInstallPromptEvent extends Event {
 
 const DISMISSED_KEY = 'pwa-install-dismissed';
 
-export function useInstallPrompt() {
-  const deferredPrompt = ref<BeforeInstallPromptEvent | null>(null);
-  const canInstall = ref(false);
-  const isInstalled = ref(false);
-  const isDismissed = ref(
-    typeof localStorage !== 'undefined' && localStorage.getItem(DISMISSED_KEY) === '1',
-  );
-  const showBanner = ref(false);
+// ── Platform detection ────────────────────────────────────────────────
 
-  function handleBeforeInstall(e: Event) {
-    e.preventDefault();
-    deferredPrompt.value = e as BeforeInstallPromptEvent;
-    canInstall.value = true;
-  }
+// beforeinstallprompt never fires on iOS/Safari — detect so the banner
+// can show share-sheet instructions instead of a programmatic install button.
+export const isIOS =
+  typeof window !== 'undefined' &&
+  (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    // iPadOS 13+ reports as "MacIntel" but has multiple touch points
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
 
-  function handleAppInstalled() {
-    deferredPrompt.value = null;
-    canInstall.value = false;
-    isInstalled.value = true;
-    showBanner.value = false;
-  }
+// ── Module-level singleton ────────────────────────────────────────────
+// All state and listeners live at module scope so they are never torn
+// down by component unmounts. beforeinstallprompt fires at most once —
+// a component remounting after the event fires would miss it entirely.
 
-  // Show banner 2s after the install prompt is available
-  watch(canInstall, (ready) => {
-    if (ready && !isDismissed.value && !isInstalled.value) {
-      setTimeout(() => {
-        if (canInstall.value && !isDismissed.value) showBanner.value = true;
-      }, 2000);
-    }
-  });
+const deferredPrompt = ref<BeforeInstallPromptEvent | null>(null);
+const canInstall = ref(false);
+const isInstalled = ref(
+  typeof window !== 'undefined' &&
+    window.matchMedia('(display-mode: standalone)').matches,
+);
+const isDismissed = ref(
+  typeof localStorage !== 'undefined' && localStorage.getItem(DISMISSED_KEY) === '1',
+);
+const showBanner = ref(false);
 
-  onMounted(() => {
-    // Already running as a standalone PWA — nothing to show
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+if (typeof window !== 'undefined' && !isInstalled.value) {
+  if (isIOS) {
+    // iOS: no install event — show instructions after a short delay
+    setTimeout(() => {
+      if (!isDismissed.value && !isInstalled.value) showBanner.value = true;
+    }, 2000);
+  } else {
+    // Android / Chrome desktop: wait for the browser install prompt
+    window.addEventListener('beforeinstallprompt', (e: Event) => {
+      e.preventDefault();
+      deferredPrompt.value = e as BeforeInstallPromptEvent;
+      canInstall.value = true;
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredPrompt.value = null;
+      canInstall.value = false;
       isInstalled.value = true;
-      return;
-    }
-    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-    window.addEventListener('appinstalled', handleAppInstalled);
-  });
+      showBanner.value = false;
+    });
 
-  onUnmounted(() => {
-    window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
-    window.removeEventListener('appinstalled', handleAppInstalled);
-  });
+    watch(canInstall, (ready) => {
+      if (ready && !isDismissed.value && !isInstalled.value) {
+        setTimeout(() => {
+          if (canInstall.value && !isDismissed.value) showBanner.value = true;
+        }, 2000);
+      }
+    });
+  }
+}
 
+// ── Public composable ─────────────────────────────────────────────────
+
+export function useInstallPrompt() {
   async function triggerInstall() {
     if (!deferredPrompt.value) return;
     await deferredPrompt.value.prompt();
@@ -70,12 +84,5 @@ export function useInstallPrompt() {
     localStorage.setItem(DISMISSED_KEY, '1');
   }
 
-  return {
-    canInstall,
-    isInstalled,
-    isDismissed,
-    showBanner,
-    triggerInstall,
-    dismiss,
-  };
+  return { showBanner, isIOS, triggerInstall, dismiss };
 }

@@ -2,7 +2,7 @@
 // Minimal cache-first strategy for the app shell.
 // API calls pass through to the network unchanged.
 
-const CACHE_VERSION = 'bike-tracker-v1';
+const CACHE_VERSION = 'bike-tracker-v2';
 const APP_SHELL = [
   '/',
   '/manifest.json',
