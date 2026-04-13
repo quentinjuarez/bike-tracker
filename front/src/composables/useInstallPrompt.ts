@@ -7,6 +7,12 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+declare global {
+  interface Window {
+    __pwaPrompt: BeforeInstallPromptEvent | null;
+  }
+}
+
 // ── Platform detection ────────────────────────────────────────────────
 
 export const isIOS =
@@ -14,13 +20,11 @@ export const isIOS =
   (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
 
-// ── Module-level singleton ────────────────────────────────────────────
-// Listeners and deferred prompt live at module scope — beforeinstallprompt
-// fires at most once and must not be missed by a component remount.
-//
-// isDismissed is read directly from the lt:app Pinia persist key (same JSON
-// Pinia writes) so we can check it before the Vue app is created.
-// Writes go through useAppStore() once Pinia is available (component context).
+export const isInstalled =
+  typeof window !== 'undefined' &&
+  window.matchMedia('(display-mode: standalone)').matches;
+
+// ── Helpers ───────────────────────────────────────────────────────────
 
 function readInstallDismissed(): boolean {
   try {
@@ -30,14 +34,10 @@ function readInstallDismissed(): boolean {
   return false;
 }
 
-let deferredPrompt: BeforeInstallPromptEvent | null = null;
+// ── Reactive state ────────────────────────────────────────────────────
+
 export const showBanner = ref(false);
 
-export const isInstalled =
-  typeof window !== 'undefined' &&
-  window.matchMedia('(display-mode: standalone)').matches;
-
-// Debug info — updated reactively so a debug panel can display live state
 export const debugInstall = ref({
   isIOS,
   isInstalled,
@@ -53,37 +53,63 @@ export const debugInstall = ref({
   userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
 });
 
+// ── Banner logic ──────────────────────────────────────────────────────
+
+function syncDebug() {
+  debugInstall.value.hasDeferredPrompt = !!window.__pwaPrompt;
+  debugInstall.value.isDismissed = readInstallDismissed();
+  debugInstall.value.showBanner = showBanner.value;
+}
+
+function tryShowBanner() {
+  const dismissed = readInstallDismissed();
+  debugInstall.value.isDismissed = dismissed;
+
+  if (dismissed) return;
+
+  showBanner.value = true;
+  debugInstall.value.showBanner = true;
+}
+
+function onPromptCaptured() {
+  debugInstall.value.promptFired = true;
+  debugInstall.value.promptFiredAt = new Date().toISOString();
+  debugInstall.value.hasDeferredPrompt = true;
+  // Small delay so the page has settled before we pop the banner
+  setTimeout(tryShowBanner, 1000);
+}
+
+// ── Module init ───────────────────────────────────────────────────────
+
 if (typeof window !== 'undefined' && !isInstalled) {
-  // Async: check SW registration state
+  // SW state
   navigator.serviceWorker?.getRegistration().then((reg) => {
     debugInstall.value.swRegistered = !!reg;
-    debugInstall.value.swState = reg?.active?.state ?? reg?.installing?.state ?? reg?.waiting?.state ?? 'none';
+    debugInstall.value.swState =
+      reg?.active?.state ?? reg?.installing?.state ?? reg?.waiting?.state ?? 'none';
   });
 
   if (isIOS) {
+    // iOS has no install prompt — show instructions banner after a delay
     setTimeout(() => {
-      const dismissed = readInstallDismissed();
-      debugInstall.value.isDismissed = dismissed;
-      if (!dismissed) showBanner.value = true;
-      debugInstall.value.showBanner = showBanner.value;
+      debugInstall.value.isDismissed = readInstallDismissed();
+      if (!readInstallDismissed()) {
+        showBanner.value = true;
+        debugInstall.value.showBanner = true;
+      }
     }, 2000);
   } else {
-    window.addEventListener('beforeinstallprompt', (e: Event) => {
-      e.preventDefault();
-      deferredPrompt = e as BeforeInstallPromptEvent;
-      debugInstall.value.promptFired = true;
-      debugInstall.value.promptFiredAt = new Date().toISOString();
-      debugInstall.value.hasDeferredPrompt = true;
-      setTimeout(() => {
-        const dismissed = readInstallDismissed();
-        debugInstall.value.isDismissed = dismissed;
-        if (!dismissed) showBanner.value = true;
-        debugInstall.value.showBanner = showBanner.value;
-      }, 2000);
-    });
+    // The inline script in index.html captures beforeinstallprompt into window.__pwaPrompt
+    // before any module executes. Check if it was already captured.
+    if (window.__pwaPrompt) {
+      onPromptCaptured();
+    }
 
-    window.addEventListener('appinstalled', () => {
-      deferredPrompt = null;
+    // Also handle the case where the event fires after this module loads
+    window.addEventListener('pwa:ready', onPromptCaptured);
+
+    window.addEventListener('pwa:installed', () => {
+      window.__pwaPrompt = null;
       showBanner.value = false;
       debugInstall.value.appInstalled = true;
       debugInstall.value.hasDeferredPrompt = false;
@@ -96,17 +122,20 @@ if (typeof window !== 'undefined' && !isInstalled) {
 
 export function useInstallPrompt() {
   async function triggerInstall() {
-    if (!deferredPrompt) return;
-    await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
+    const prompt = window.__pwaPrompt;
+    if (!prompt) return;
+    await prompt.prompt();
+    const { outcome } = await prompt.userChoice;
     if (outcome === 'accepted') {
-      deferredPrompt = null;
+      window.__pwaPrompt = null;
       showBanner.value = false;
+      syncDebug();
     }
   }
 
   function dismiss() {
     showBanner.value = false;
+    debugInstall.value.showBanner = false;
     useAppStore().installDismissed = true;
   }
 

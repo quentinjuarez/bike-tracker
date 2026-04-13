@@ -10,22 +10,19 @@
     </div>
 
     <div v-if="open" class="space-y-0.5 px-3 py-2">
-      <Row label="HTTPS" :ok="d.isHttps" :value="d.isHttps ? 'yes' : 'NO ← install blocked'" />
-      <Row label="standalone" :ok="!d.isInstalled" :value="d.isInstalled ? 'yes (already installed)' : 'no'" />
-      <Row label="iOS" :value="d.isIOS ? 'yes (share-sheet flow)' : 'no'" />
-      <Row label="SW registered" :ok="d.swRegistered" :value="d.swRegistered ? `yes (${d.swState})` : 'NO ← install blocked'" />
-      <Row label="prompt fired" :ok="d.promptFired" :value="d.promptFired ? `yes @ ${d.promptFiredAt?.slice(11, 19)}` : 'NOT YET'" />
-      <Row label="deferredPrompt" :ok="d.hasDeferredPrompt" :value="d.hasDeferredPrompt ? 'captured ✓' : 'null'" />
-      <Row label="dismissed" :ok="!d.isDismissed" :value="d.isDismissed ? 'YES ← banner blocked' : 'no'" />
-      <Row label="showBanner" :ok="d.showBanner" :value="String(d.showBanner)" />
-      <Row label="appInstalled" :value="String(d.appInstalled)" />
+      <div v-for="row in rows" :key="row.label" class="flex justify-between gap-1">
+        <span class="shrink-0 text-yellow-600">{{ row.label }}</span>
+        <span :class="row.ok === undefined ? 'text-yellow-400' : row.ok ? 'text-green-400' : 'text-red-400'">
+          {{ row.value }}
+        </span>
+      </div>
 
       <div class="mt-2 border-t border-yellow-500/20 pt-2">
         <div class="mb-1 text-yellow-600">userAgent</div>
         <div class="break-all leading-tight text-yellow-500">{{ d.userAgent }}</div>
       </div>
 
-      <div class="mt-2 flex gap-2">
+      <div class="mt-2 flex flex-wrap gap-2">
         <button
           class="rounded bg-yellow-500/20 px-2 py-1 text-yellow-300 hover:bg-yellow-500/40"
           @click="resetDismissed"
@@ -38,19 +35,41 @@
         >
           Check SW
         </button>
+        <button
+          class="rounded bg-green-500/20 px-2 py-1 text-green-300 hover:bg-green-500/40"
+          @click="forceBanner"
+        >
+          Force banner
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
-import { debugInstall } from '../composables/useInstallPrompt';
+import { debugInstall, showBanner } from '../composables/useInstallPrompt';
 import { useAppStore } from '../stores/app';
 
 const open = ref(true);
 const d = debugInstall;
+const windowPrompt = computed(() => !!(window as unknown as { __pwaPrompt: unknown }).__pwaPrompt);
+
+const rows = computed(() => {
+  const v = d.value;
+  return [
+    { label: 'HTTPS',             value: v.isHttps ? 'yes' : 'NO ← install blocked',         ok: v.isHttps },
+    { label: 'standalone',        value: v.isInstalled ? 'yes (already installed)' : 'no',    ok: !v.isInstalled },
+    { label: 'iOS',               value: v.isIOS ? 'yes (share-sheet flow)' : 'no',           ok: undefined },
+    { label: 'SW registered',     value: v.swRegistered ? `yes (${v.swState})` : 'NO ← install blocked', ok: v.swRegistered },
+    { label: 'prompt fired',      value: v.promptFired ? `yes @ ${v.promptFiredAt?.slice(11, 19)}` : 'NOT YET', ok: v.promptFired },
+    { label: 'window.__pwaPrompt',value: windowPrompt.value ? 'captured ✓' : 'null',          ok: windowPrompt.value },
+    { label: 'dismissed',         value: v.isDismissed ? 'YES ← banner blocked' : 'no',       ok: !v.isDismissed },
+    { label: 'showBanner',        value: String(v.showBanner),                                 ok: v.showBanner },
+    { label: 'appInstalled',      value: String(v.appInstalled),                               ok: undefined },
+  ];
+});
 
 function resetDismissed() {
   useAppStore().installDismissed = false;
@@ -62,5 +81,10 @@ async function refreshSW() {
   d.value.swRegistered = !!reg;
   d.value.swState =
     reg?.active?.state ?? reg?.installing?.state ?? reg?.waiting?.state ?? 'none';
+}
+
+function forceBanner() {
+  showBanner.value = true;
+  d.value.showBanner = true;
 }
 </script>
